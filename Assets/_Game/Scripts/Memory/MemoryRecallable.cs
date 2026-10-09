@@ -20,6 +20,7 @@ namespace LightRemembers.Memory
         [SerializeField] private Collider[] memoryColliders;
         [SerializeField] private Renderer[] previewRenderers;
         [SerializeField] private Renderer[] materializedRenderers;
+        [SerializeField] private MemoryFocusGroup focusGroup;
 
         [Header("Recall")]
         [SerializeField, Min(0.1f)] private float recallDuration = 8f;
@@ -46,6 +47,18 @@ namespace LightRemembers.Memory
         {
             get => recallDuration;
             set => recallDuration = Mathf.Max(0.1f, value);
+        }
+
+        public void ConfigureFocusGroup(MemoryFocusGroup group) => focusGroup = group;
+
+        /// <summary>Refreshes cached renderers/colliders after an Editor-authored state is populated.</summary>
+        public void RefreshStateObjects()
+        {
+            previewRenderers = null;
+            materializedRenderers = null;
+            memoryColliders = null;
+            CacheReferences();
+            EnterState(_state);
         }
 
         public void Configure(
@@ -122,12 +135,24 @@ namespace LightRemembers.Memory
             if (_state != RecallState.Revealed)
                 return false;
 
+            focusGroup?.Claim(this);
             _remainingDuration = recallDuration;
             _releasePending = false;
             _occupancyPollTimer = 0f;
-            _occupants = Object.FindObjectsByType<CharacterController>();
+            _occupants = Object.FindObjectsByType<CharacterController>(FindObjectsInactive.Exclude);
             EnterState(RecallState.Recalled);
             return true;
+        }
+
+        /// <summary>Requests release using the same occupancy-safe policy as timed expiry.</summary>
+        public void RequestSafeRelease()
+        {
+            if (_state != RecallState.Recalled)
+                return;
+
+            _remainingDuration = 0f;
+            _releasePending = true;
+            _occupancyPollTimer = 0f;
         }
 
         private void CacheReferences()

@@ -25,6 +25,13 @@ namespace LightRemembers.Player
         public CharacterController Controller => characterController;
         public PlayerInputReader InputReader => inputReader;
 
+        public void ResetMotion()
+        {
+            _verticalSpeed = 0f;
+            _rotationVelocity = 0f;
+            _jumpRequested = false;
+        }
+
         public void Configure(CharacterController controller, PlayerInputReader reader, Transform view)
         {
             characterController = controller;

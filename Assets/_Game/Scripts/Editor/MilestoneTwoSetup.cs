@@ -126,7 +126,7 @@ namespace LightRemembers.Editor
             EditorSceneManager.SaveScene(scene);
         }
 
-        private static Camera CreateCameraRig(Transform parent, Transform cameraTarget, PlayerInputReader inputReader)
+        public static Camera CreateCameraRig(Transform parent, Transform cameraTarget, PlayerInputReader inputReader)
         {
             var cameraRig = EditorAutomation.CreateGameObject("CameraRig", parent, Vector3.zero, Vector3.zero, Vector3.one);
             var outputObject = EditorAutomation.CreateGameObject("Main Camera", cameraRig.transform, new Vector3(0f, 2f, -4.5f), new Vector3(8f, 0f, 0f), Vector3.one);

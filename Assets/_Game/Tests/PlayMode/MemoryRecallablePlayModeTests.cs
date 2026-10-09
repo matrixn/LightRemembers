@@ -1,5 +1,7 @@
 using System.Collections;
 using LightRemembers.Memory;
+using LightRemembers.Interaction;
+using LightRemembers.Narrative;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -48,6 +50,73 @@ namespace LightRemembers.Tests.PlayMode
             Assert.That(setup.Collider.enabled, Is.False);
             Object.Destroy(setup.Root);
             Object.Destroy(character);
+        }
+
+        [UnityTest]
+        public IEnumerator FocusGroupSafelyReleasesPreviousChoiceWhenAnotherIsRecalled()
+        {
+            var groupObject = new GameObject("FocusGroup");
+            var group = groupObject.AddComponent<MemoryFocusGroup>();
+            var first = CreateRecallable("FirstChoice", 8f);
+            var second = CreateRecallable("SecondChoice", 8f);
+            first.Recallable.ConfigureFocusGroup(group);
+            second.Recallable.ConfigureFocusGroup(group);
+
+            first.Recallable.SetRevealed(true);
+            Assert.That(first.Recallable.TryRecall(), Is.True);
+            second.Recallable.SetRevealed(true);
+            Assert.That(second.Recallable.TryRecall(), Is.True);
+            Assert.That(group.Active, Is.SameAs(second.Recallable));
+
+            yield return new WaitForSeconds(0.25f);
+
+            Assert.That(first.Recallable.State, Is.EqualTo(RecallState.Normal));
+            Assert.That(first.Collider.enabled, Is.False);
+            Assert.That(second.Recallable.State, Is.EqualTo(RecallState.Recalled));
+            Object.Destroy(first.Root);
+            Object.Destroy(second.Root);
+            Object.Destroy(groupObject);
+        }
+
+        [UnityTest]
+        public IEnumerator EchoSequenceCollectsFragmentAndUnlocksExitOnlyOnce()
+        {
+            var echoObject = new GameObject("EchoSequenceTest");
+            var child = new GameObject("ChildEchoTest");
+            var grandfather = new GameObject("GrandfatherEchoTest");
+            var silhouette = new GameObject("UnknownSilhouetteTest");
+            child.SetActive(false);
+            grandfather.SetActive(false);
+            silhouette.SetActive(false);
+            var collectorObject = new GameObject("FragmentCollectorTest");
+            var collector = collectorObject.AddComponent<MemoryFragmentCollector>();
+            var exitObject = new GameObject("ExitUnlockerTest");
+            var exit = exitObject.AddComponent<ExitUnlocker>();
+            exit.Configure(null, string.Empty);
+            var fragment = ScriptableObject.CreateInstance<MemoryFragmentDefinition>();
+            fragment.Configure("test_fragment", "Test Fragment", "A test memory.");
+            var sequence = echoObject.AddComponent<MemoryEchoSequence>();
+            sequence.Configure(null, null, child, grandfather, silhouette, null, fragment, collector, exit, 0f);
+
+            sequence.Begin();
+            sequence.Begin();
+            yield return new WaitForSeconds(0.1f);
+
+            Assert.That(sequence.IsCompleted, Is.True);
+            Assert.That(child.activeSelf, Is.False);
+            Assert.That(grandfather.activeSelf, Is.False);
+            Assert.That(silhouette.activeSelf, Is.False);
+            Assert.That(collector.Count, Is.EqualTo(1));
+            Assert.That(collector.HasCollected("test_fragment"), Is.True);
+            Assert.That(exit.IsUnlocked, Is.True);
+
+            Object.Destroy(echoObject);
+            Object.Destroy(child);
+            Object.Destroy(grandfather);
+            Object.Destroy(silhouette);
+            Object.Destroy(collectorObject);
+            Object.Destroy(exitObject);
+            Object.Destroy(fragment);
         }
 
         private static RecallableSetup CreateRecallable(string name, float duration)
