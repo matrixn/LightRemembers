@@ -122,10 +122,14 @@ namespace LightRemembers.Tests.PlayMode
             var player = new GameObject("ExposureTestPlayer");
             _hollowObject = new GameObject("ExposureTestHollow");
             _hollowObject.AddComponent<CharacterController>();
+            var memoryFragment = new GameObject("RevealedMemoryFragment");
             var hollow = _hollowObject.AddComponent<HollowController>();
             hollow.Configure(player.transform, null, null, _corruption, null, null,
-                null, _hollowObject.GetComponentsInChildren<Renderer>(true), null);
+                null, _hollowObject.GetComponentsInChildren<Renderer>(true), new[] { memoryFragment });
             hollow.Wake();
+            hollow.SetRevealed(true);
+            Assert.That(hollow.IsRevealed, Is.True);
+            Assert.That(memoryFragment.activeSelf, Is.True);
 
             hollow.TickLightExposure(true, 0.9f);
             Assert.That(hollow.State, Is.EqualTo(HollowState.Observe));
@@ -136,7 +140,50 @@ namespace LightRemembers.Tests.PlayMode
             hollow.TickLightExposure(false, 0.2f);
             Assert.That(hollow.State, Is.EqualTo(HollowState.Return));
             Assert.That(hollow.RepelExposureSeconds, Is.EqualTo(2.5f).Within(0.01f));
+            hollow.SetRevealed(false);
+            Assert.That(memoryFragment.activeSelf, Is.False);
             Object.Destroy(player);
+            Object.Destroy(memoryFragment);
+        }
+
+        [Test]
+        public void AppearingMemoryRemnantShowsDimBeaconAndRevealedAbilityPrompt()
+        {
+            var root = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            root.name = "MemoryRemnantVisualTest";
+            var rootRenderer = root.GetComponent<Renderer>();
+            var halo = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            halo.name = "Halo";
+            halo.transform.SetParent(root.transform, false);
+            halo.transform.localScale = Vector3.one * 1.6f;
+            var haloRenderer = halo.GetComponent<Renderer>();
+            var glow = root.AddComponent<Light>();
+            glow.enabled = false;
+            var labelObject = new GameObject("AbilityLabel", typeof(TextMesh));
+            labelObject.transform.SetParent(root.transform, false);
+            var label = labelObject.GetComponent<TextMesh>();
+            var remnant = root.AddComponent<MemoryRemnant>();
+            remnant.Configure(MemoryAbility.Recall, _corruption,
+                new[] { rootRenderer, haloRenderer, label.GetComponent<Renderer>() }, glow, label);
+
+            remnant.Appear(MemoryAbility.Recall, _corruption);
+            Assert.That(root.activeSelf, Is.True);
+            Assert.That(rootRenderer.enabled, Is.True, "The remnant should be findable before it is targeted.");
+            Assert.That(haloRenderer.enabled, Is.False, "The strong halo should only appear under Memory Light.");
+            Assert.That(glow.enabled, Is.True);
+            Assert.That(glow.intensity, Is.LessThan(1.5f));
+            Assert.That(label.gameObject.activeSelf, Is.False);
+
+            remnant.SetRevealed(true);
+            Assert.That(haloRenderer.enabled, Is.True);
+            Assert.That(glow.intensity, Is.EqualTo(1.5f));
+            Assert.That(label.gameObject.activeSelf, Is.True);
+            Assert.That(label.text, Is.EqualTo("E - RECALL"));
+
+            remnant.SetRevealed(false);
+            Assert.That(haloRenderer.enabled, Is.False);
+            Assert.That(label.gameObject.activeSelf, Is.False);
+            Object.Destroy(root);
         }
 
         [Test]

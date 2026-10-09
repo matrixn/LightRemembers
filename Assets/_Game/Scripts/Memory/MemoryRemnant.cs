@@ -10,18 +10,25 @@ namespace LightRemembers.Memory
         [SerializeField] private MemoryCorruptionController corruptionController;
         [SerializeField] private Renderer[] glowRenderers;
         [SerializeField] private Light glowLight;
+        [SerializeField] private TextMesh abilityLabel;
+        [SerializeField, Min(0f)] private float idleIntensity = 0.22f;
         [SerializeField, Min(0f)] private float revealedIntensity = 1.5f;
+
+        private Renderer _beaconRenderer;
 
         public MemoryAbility Ability => ability;
         public bool IsRevealed { get; private set; }
 
         public void Configure(MemoryAbility restoredAbility, MemoryCorruptionController controller,
-            Renderer[] renderers, Light lightSource)
+            Renderer[] renderers, Light lightSource, TextMesh label = null)
         {
             ability = restoredAbility;
             corruptionController = controller;
             glowRenderers = renderers;
             glowLight = lightSource;
+            abilityLabel = label;
+            _beaconRenderer = GetComponent<Renderer>();
+            UpdateAbilityLabel();
             Hide();
         }
 
@@ -29,6 +36,7 @@ namespace LightRemembers.Memory
         {
             ability = restoredAbility;
             corruptionController = controller;
+            UpdateAbilityLabel();
             IsRevealed = false;
             gameObject.SetActive(true);
             SetGlow(false);
@@ -38,6 +46,8 @@ namespace LightRemembers.Memory
         {
             IsRevealed = revealed;
             SetGlow(revealed);
+            if (abilityLabel != null)
+                abilityLabel.gameObject.SetActive(revealed && gameObject.activeInHierarchy);
         }
 
         public override bool CanInteract(Transform interactor) => IsRevealed && corruptionController != null &&
@@ -61,6 +71,7 @@ namespace LightRemembers.Memory
         {
             if (glowRenderers == null || glowRenderers.Length == 0)
                 glowRenderers = GetComponentsInChildren<Renderer>(true);
+            _beaconRenderer = GetComponent<Renderer>();
             SetGlow(false);
         }
 
@@ -69,12 +80,21 @@ namespace LightRemembers.Memory
             if (glowRenderers != null)
                 foreach (var targetRenderer in glowRenderers)
                     if (targetRenderer != null)
-                        targetRenderer.enabled = visible && gameObject.activeInHierarchy;
+                        targetRenderer.enabled = gameObject.activeInHierarchy &&
+                            (visible || targetRenderer == _beaconRenderer);
             if (glowLight != null)
             {
-                glowLight.enabled = visible && gameObject.activeInHierarchy;
-                glowLight.intensity = revealedIntensity;
+                glowLight.enabled = gameObject.activeInHierarchy;
+                glowLight.intensity = visible ? revealedIntensity : idleIntensity;
             }
+            if (abilityLabel != null)
+                abilityLabel.gameObject.SetActive(visible && gameObject.activeInHierarchy);
+        }
+
+        private void UpdateAbilityLabel()
+        {
+            if (abilityLabel != null)
+                abilityLabel.text = ability == MemoryAbility.Recall ? "E - RECALL" : "E - ECHO";
         }
     }
 }

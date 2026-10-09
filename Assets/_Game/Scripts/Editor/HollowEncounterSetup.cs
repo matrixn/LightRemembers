@@ -106,8 +106,10 @@ namespace LightRemembers.Editor
 
             var gateParts = BuildFinalGateMechanism(memoryObjects, finalGate.transform, stone, memory, ghost, hint, focus);
             var safe = BuildSanctuary(safeArea, sanctuaryMaterial);
-            var remnantRecall = BuildRemnant(memoryObjects, "RecallMemoryRemnant", new Vector3(3.6f, 1.15f, 61f), memory, sanctuaryMaterial);
-            var remnantEcho = BuildRemnant(memoryObjects, "EchoMemoryRemnant", new Vector3(-3.4f, 1.15f, 90f), memory, sanctuaryMaterial);
+            var remnantRecall = BuildRemnant(memoryObjects, "RecallMemoryRemnant", MemoryAbility.Recall,
+                new Vector3(3.6f, 1.15f, 52.4f), memory, sanctuaryMaterial);
+            var remnantEcho = BuildRemnant(memoryObjects, "EchoMemoryRemnant", MemoryAbility.Echo,
+                new Vector3(-3.4f, 1.15f, 90f), memory, sanctuaryMaterial);
 
             var resetter = Child("EncounterMemoryResetter", gameplay).gameObject.AddComponent<MemoryEncounterResetter>();
             var recallables = new[] { recallBridge.Component, recallStep.Component };
@@ -164,6 +166,8 @@ namespace LightRemembers.Editor
             Cube("AfterGatePath", path, new Vector3(0f, -0.32f, 126f), new Vector3(11f, 0.64f, 12f), stone);
             Cube("SanctuaryFloor", safeArea, new Vector3(0f, -0.32f, 137f), new Vector3(14f, 0.64f, 20f), stone);
             Cube("ExitTrail", path, new Vector3(0f, -0.32f, 153f), new Vector3(10f, 0.64f, 16f), stone);
+
+            BuildHollowLightHint(path, stone, hint);
 
             for (var side = -1; side <= 1; side += 2)
             {
@@ -290,7 +294,8 @@ namespace LightRemembers.Editor
             return sanctuary;
         }
 
-        private static RemnantParts BuildRemnant(Transform parent, string name, Vector3 position, Material memory, Material hint)
+        private static RemnantParts BuildRemnant(Transform parent, string name, MemoryAbility ability,
+            Vector3 position, Material memory, Material hint)
         {
             var remnant = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             remnant.name = name;
@@ -309,9 +314,47 @@ namespace LightRemembers.Editor
             halo.transform.localScale = Vector3.one * 1.6f;
             halo.GetComponent<Renderer>().sharedMaterial = hint;
             Object.DestroyImmediate(halo.GetComponent<Collider>());
+            var labelObject = new GameObject("MemoryRemnantAbilityLabel", typeof(TextMesh));
+            labelObject.transform.SetParent(remnant.transform, false);
+            labelObject.transform.localPosition = new Vector3(0f, 0.72f, 0f);
+            labelObject.transform.localRotation = Quaternion.identity;
+            var label = labelObject.GetComponent<TextMesh>();
+            label.anchor = TextAnchor.MiddleCenter;
+            label.alignment = TextAlignment.Center;
+            label.characterSize = 0.12f;
+            label.fontSize = 36;
+            label.color = new Color(1f, 0.82f, 0.46f);
+            label.text = ability == MemoryAbility.Recall ? "E - RECALL" : "E - ECHO";
             var behaviour = remnant.AddComponent<MemoryRemnant>();
-            behaviour.Configure(MemoryAbility.Recall, null, remnant.GetComponentsInChildren<Renderer>(true), light);
+            behaviour.Configure(ability, null, remnant.GetComponentsInChildren<Renderer>(true), light, label);
             return new RemnantParts(remnant, behaviour);
+        }
+
+        private static void BuildHollowLightHint(Transform path, Material stone, Material hint)
+        {
+            var plaque = Cube("HollowCounterplayInscription", path,
+                new Vector3(-2.65f, 1.95f, 11.5f), new Vector3(3.45f, 0.9f, 0.16f), stone);
+            Object.DestroyImmediate(plaque.GetComponent<Collider>());
+
+            var textObject = new GameObject("HoldMemoryLightHint", typeof(TextMesh));
+            textObject.transform.SetParent(plaque.transform, false);
+            textObject.transform.localPosition = new Vector3(0f, 0f, -0.085f);
+            textObject.transform.localRotation = Quaternion.identity;
+            var text = textObject.GetComponent<TextMesh>();
+            text.anchor = TextAnchor.MiddleCenter;
+            text.alignment = TextAlignment.Center;
+            text.characterSize = 0.055f;
+            text.fontSize = 36;
+            text.color = new Color(1f, 0.78f, 0.36f);
+            text.text = "HOLD THE LIGHT\nON THE HOLLOW";
+
+            var lanternGlyph = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            lanternGlyph.name = "MemoryLightGlyph";
+            lanternGlyph.transform.SetParent(plaque.transform, false);
+            lanternGlyph.transform.localPosition = new Vector3(1.45f, 0f, -0.09f);
+            lanternGlyph.transform.localScale = Vector3.one * 0.11f;
+            lanternGlyph.GetComponent<Renderer>().sharedMaterial = hint;
+            Object.DestroyImmediate(lanternGlyph.GetComponent<Collider>());
         }
 
         private static void BuildHollow(Transform root, Transform player, Camera camera, PlayerMemoryLight memoryLight,

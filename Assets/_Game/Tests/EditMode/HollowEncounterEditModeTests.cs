@@ -45,6 +45,27 @@ namespace LightRemembers.Tests.EditMode
             Assert.That(bridge.transform.Find("MemoryState/MaterializedMemory")
                 .GetComponentsInChildren<Collider>(true).All(collider => !collider.enabled), Is.True);
 
+            var nearBank = all.First(gameObject => gameObject.name == "BridgeNearBank").GetComponent<Collider>();
+            var recallRemnant = Find<MemoryRemnant>(all, "RecallMemoryRemnant");
+            var recallRemnantPointOnBank = recallRemnant.transform.position;
+            recallRemnantPointOnBank.y = nearBank.bounds.center.y;
+            Assert.That(nearBank.bounds.Contains(recallRemnantPointOnBank), Is.True,
+                "Recall recovery must remain reachable before crossing the Recall-gated bridge.");
+            Assert.That(recallRemnant.Ability, Is.EqualTo(MemoryAbility.Recall));
+            Assert.That(recallRemnant.GetComponentInChildren<TextMesh>(true).text, Is.EqualTo("E - RECALL"));
+
+            var echoRemnant = Find<MemoryRemnant>(all, "EchoMemoryRemnant");
+            Assert.That(echoRemnant.Ability, Is.EqualTo(MemoryAbility.Echo));
+            Assert.That(echoRemnant.GetComponentInChildren<TextMesh>(true).text, Is.EqualTo("E - ECHO"));
+
+            var lightHint = Find<TextMesh>(all, "HoldMemoryLightHint");
+            Assert.That(lightHint, Is.Not.Null);
+            Assert.That(lightHint.text, Is.EqualTo("HOLD THE LIGHT\nON THE HOLLOW"));
+            Assert.That(lightHint.transform.position.z,
+                Is.LessThan(Find<HollowWakeTrigger>(all, "HollowWakeTrigger").transform.position.z),
+                "The world-space hint should be visible before the encounter starts.");
+            Assert.That(lightHint.GetComponent<Collider>(), Is.Null);
+
             var finalRecall = Find<MemoryRecallable>(all, "FinalGateMemoryMechanism");
             var finalEcho = Find<MemoryEchoable>(all, "FinalGateMemoryMechanism");
             var gate = Find<RecallEchoGate>(all, "FinalGateRecallEchoController");

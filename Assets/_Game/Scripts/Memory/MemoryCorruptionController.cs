@@ -49,12 +49,12 @@ namespace LightRemembers.Memory
                 case 0:
                     MemoryAbilityState.CorruptRecall();
                     recallRemnant?.Appear(MemoryAbility.Recall, this);
-                    subtitles?.Show(string.Empty, "I can't remember how to hold it together.");
+                    subtitles?.Show(string.Empty, "I can't remember how to hold it together. Something remains nearby.");
                     break;
                 case 1:
                     MemoryAbilityState.CorruptEcho();
                     echoRemnant?.Appear(MemoryAbility.Echo, this);
-                    subtitles?.Show(string.Empty, "I can't remember how it moved.");
+                    subtitles?.Show(string.Empty, "I can't remember how it moved. Something remains nearby.");
                     break;
                 default:
                     _collapsing = true;
