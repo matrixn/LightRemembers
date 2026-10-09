@@ -1,0 +1,48 @@
+{
+    "name": "LightRemembers",
+    "maps": [
+        {
+            "name": "Player",
+            "id": "5cf54b39-4d1f-4d1f-91fb-2a56b4ca9c1a",
+            "actions": [
+                { "name": "Move", "type": "Value", "id": "b0d4bdb1-8ad2-4f1c-9b14-b4fa7847ae01", "expectedControlType": "Vector2", "initialStateCheck": true },
+                { "name": "Look", "type": "Value", "id": "c7d7cbd8-2cd1-47ec-8c4c-33bdc5a3b102", "expectedControlType": "Vector2", "initialStateCheck": true },
+                { "name": "Jump", "type": "Button", "id": "3cdb2a37-ff44-45a8-8f64-80f571a5e103", "expectedControlType": "Button" },
+                { "name": "Sprint", "type": "Button", "id": "7f7cc3dd-7efc-4f90-9d7a-0c6a64d4b104", "expectedControlType": "Button" },
+                { "name": "Interact", "type": "Button", "id": "94fc8b32-38b5-4b5a-bb44-50bb4ea8d105", "expectedControlType": "Button" },
+                { "name": "MemoryLight", "type": "Button", "id": "efef9cdf-4ec7-4d48-9d6b-8cbac4f8b106", "expectedControlType": "Button" },
+                { "name": "PrimaryAbility", "type": "Button", "id": "14fe0bb5-1e18-41e7-bd66-f420700aa107", "expectedControlType": "Button" },
+                { "name": "SecondaryAbility", "type": "Button", "id": "f1ed0835-b98b-4821-b6a7-0e4db30e8108", "expectedControlType": "Button" },
+                { "name": "Pause", "type": "Button", "id": "d5ad82e6-a5bb-4a09-ae4d-45d07aa2b109", "expectedControlType": "Button" }
+            ],
+            "bindings": [
+                { "name": "WASD", "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50101", "path": "2DVector", "action": "Move", "isComposite": true },
+                { "name": "up", "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50102", "path": "<Keyboard>/w", "groups": "Keyboard&Mouse", "action": "Move", "isPartOfComposite": true },
+                { "name": "down", "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50103", "path": "<Keyboard>/s", "groups": "Keyboard&Mouse", "action": "Move", "isPartOfComposite": true },
+                { "name": "left", "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50104", "path": "<Keyboard>/a", "groups": "Keyboard&Mouse", "action": "Move", "isPartOfComposite": true },
+                { "name": "right", "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50105", "path": "<Keyboard>/d", "groups": "Keyboard&Mouse", "action": "Move", "isPartOfComposite": true },
+                { "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50106", "path": "<Gamepad>/leftStick", "groups": "Gamepad", "action": "Move" },
+                { "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50107", "path": "<Mouse>/delta", "groups": "Keyboard&Mouse", "action": "Look" },
+                { "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50108", "path": "<Gamepad>/rightStick", "groups": "Gamepad", "action": "Look" },
+                { "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50109", "path": "<Keyboard>/space", "groups": "Keyboard&Mouse", "action": "Jump" },
+                { "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50110", "path": "<Gamepad>/buttonSouth", "groups": "Gamepad", "action": "Jump" },
+                { "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50111", "path": "<Keyboard>/leftShift", "groups": "Keyboard&Mouse", "action": "Sprint" },
+                { "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50112", "path": "<Gamepad>/leftStickPress", "groups": "Gamepad", "action": "Sprint" },
+                { "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50113", "path": "<Keyboard>/e", "groups": "Keyboard&Mouse", "action": "Interact" },
+                { "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50114", "path": "<Gamepad>/buttonWest", "groups": "Gamepad", "action": "Interact" },
+                { "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50115", "path": "<Mouse>/rightButton", "groups": "Keyboard&Mouse", "action": "MemoryLight" },
+                { "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50116", "path": "<Gamepad>/leftTrigger", "groups": "Gamepad", "action": "MemoryLight" },
+                { "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50117", "path": "<Mouse>/leftButton", "groups": "Keyboard&Mouse", "action": "PrimaryAbility" },
+                { "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50118", "path": "<Gamepad>/rightTrigger", "groups": "Gamepad", "action": "PrimaryAbility" },
+                { "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50119", "path": "<Keyboard>/q", "groups": "Keyboard&Mouse", "action": "SecondaryAbility" },
+                { "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50120", "path": "<Gamepad>/rightShoulder", "groups": "Gamepad", "action": "SecondaryAbility" },
+                { "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50121", "path": "<Keyboard>/escape", "groups": "Keyboard&Mouse", "action": "Pause" },
+                { "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50122", "path": "<Gamepad>/start", "groups": "Gamepad", "action": "Pause" }
+            ]
+        }
+    ],
+    "controlSchemes": [
+        { "name": "Keyboard&Mouse", "bindingGroup": "Keyboard&Mouse", "devices": [ { "devicePath": "<Keyboard>", "isOptional": false }, { "devicePath": "<Mouse>", "isOptional": false } ] },
+        { "name": "Gamepad", "bindingGroup": "Gamepad", "devices": [ { "devicePath": "<Gamepad>", "isOptional": false } ] }
+    ]
+}
