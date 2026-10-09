@@ -7116,14 +7116,17 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 2685526396946343169, guid: e10d3961d3cd15146a5dba67f870ced4, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1741339459}
   m_SourcePrefab: {fileID: 100100000, guid: e10d3961d3cd15146a5dba67f870ced4, type: 3}
 --- !u!114 &1741339455 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 67587420126881143, guid: e10d3961d3cd15146a5dba67f870ced4, type: 3}
   m_PrefabInstance: {fileID: 1741339454}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+  m_GameObject: {fileID: 1741339458}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8d87fa0ad622b0b4ca5e43532f27c485, type: 3}
@@ -7139,6 +7142,25 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 3533149933462140465, guid: e10d3961d3cd15146a5dba67f870ced4, type: 3}
   m_PrefabInstance: {fileID: 1741339454}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1741339458 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 2685526396946343169, guid: e10d3961d3cd15146a5dba67f870ced4, type: 3}
+  m_PrefabInstance: {fileID: 1741339454}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1741339459
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1741339458}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e883d3873db3bf94d8973274698c9677, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: LightRemembers.Runtime::LightRemembers.Player.CheckpointRespawner
+  characterController: {fileID: 0}
+  movement: {fileID: 0}
 --- !u!1 &1742483684
 GameObject:
   m_ObjectHideFlags: 0
@@ -7617,6 +7639,7 @@ MonoBehaviour:
   path: {fileID: 561317436}
   pathPreview: {fileID: 1307197930}
   rideSurface: {fileID: 513972343}
+  recallRequirement: {fileID: 0}
   movingRenderers:
   - {fileID: 1716313969}
   - {fileID: 1862357093}
@@ -8385,6 +8408,7 @@ MonoBehaviour:
   path: {fileID: 1506750344}
   pathPreview: {fileID: 125114709}
   rideSurface: {fileID: 439755996}
+  recallRequirement: {fileID: 0}
   movingRenderers:
   - {fileID: 1466018002}
   - {fileID: 1481438857}

@@ -22,7 +22,9 @@ namespace LightRemembers.Memory
         private Vector3 _lastHitPoint;
 
         public IMemoryLightTarget CurrentTarget => _currentTarget;
-        public IMemoryRecallable CurrentRecallableTarget => _currentTarget as IMemoryRecallable;
+        public IMemoryRecallable CurrentRecallableTarget => _currentTarget is MemoryComposite composite
+            ? composite.Recall
+            : _currentTarget as IMemoryRecallable;
         public float MaximumRange { get => maximumRange; set => maximumRange = Mathf.Max(0f, value); }
 
         public void Configure(PlayerInputReader reader, Transform origin, Transform aim, Light beam)
@@ -113,13 +115,17 @@ namespace LightRemembers.Memory
 
         private void TryRecallCurrentTarget()
         {
-            if (_currentTarget is IMemoryRecallable recallable)
+            if (_currentTarget is MemoryComposite composite)
+                composite.TryRecall();
+            else if (_currentTarget is IMemoryRecallable recallable)
                 recallable.TryRecall();
         }
 
         private void TryEchoCurrentTarget()
         {
-            if (_currentTarget is IMemoryEchoable echoable)
+            if (_currentTarget is MemoryComposite composite)
+                composite.TryEcho();
+            else if (_currentTarget is IMemoryEchoable echoable)
                 echoable.TryEcho();
         }
 
@@ -148,6 +154,9 @@ namespace LightRemembers.Memory
         {
             _componentBuffer.Clear();
             targetCollider.GetComponentsInParent(true, _componentBuffer);
+            foreach (var behaviour in _componentBuffer)
+                if (behaviour is MemoryComposite composite)
+                    return composite;
             foreach (var behaviour in _componentBuffer)
             {
                 if (behaviour is IMemoryLightTarget target)

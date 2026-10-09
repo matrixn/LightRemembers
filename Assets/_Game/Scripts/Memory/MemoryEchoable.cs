@@ -13,6 +13,7 @@ namespace LightRemembers.Memory
         [SerializeField] private EchoPath path;
         [SerializeField] private GameObject pathPreview;
         [SerializeField] private EchoRideSurface rideSurface;
+        [SerializeField] private MemoryRecallable recallRequirement;
         [SerializeField] private Renderer[] movingRenderers;
         [SerializeField, ColorUsage(false, true)] private Color idleEmission = Color.black;
         [SerializeField, ColorUsage(false, true)] private Color echoEmission = new Color(0.35f, 1.2f, 1.6f, 1f);
@@ -21,12 +22,16 @@ namespace LightRemembers.Memory
         private Coroutine _playback;
         private bool _isRevealed;
         private EchoState _state;
+        private float _rejectionPulseRemaining;
 
         public EchoState State => _state;
         public bool IsRevealed => _isRevealed;
         public EchoPath Path => path;
         public Transform MovingObject => movingObject;
         public EchoRideSurface RideSurface => rideSurface;
+        public MemoryRecallable RecallRequirement => recallRequirement;
+        public bool RequiresRecall => recallRequirement != null;
+        public string LastFailureFeedback { get; private set; }
 
         public void Configure(EchoPath echoPath, Transform target, GameObject preview, EchoRideSurface surface, Renderer[] renderers = null)
         {
@@ -68,6 +73,14 @@ namespace LightRemembers.Memory
 
         public bool TryEcho()
         {
+            if (recallRequirement != null && recallRequirement.State != RecallState.Recalled)
+            {
+                LastFailureFeedback = "The movement is there... but the shape is gone.";
+                _rejectionPulseRemaining = 0.45f;
+                SetEmission(echoEmission * 1.8f);
+                return false;
+            }
+
             if (_state != EchoState.Revealed || !MemoryAbilityState.EchoUnlocked ||
                 path == null || !path.IsValid || movingObject == null)
                 return false;
@@ -78,6 +91,20 @@ namespace LightRemembers.Memory
             SetEmission(echoEmission);
             _playback = StartCoroutine(PlayPath());
             return true;
+        }
+
+        public void ConfigureRecallRequirement(MemoryRecallable requirement) => recallRequirement = requirement;
+
+        private void Update()
+        {
+            if (_rejectionPulseRemaining <= 0f || _state == EchoState.Echoing)
+                return;
+            _rejectionPulseRemaining -= Time.deltaTime;
+            if (_rejectionPulseRemaining <= 0f)
+            {
+                _rejectionPulseRemaining = 0f;
+                SetEmission(idleEmission);
+            }
         }
 
         private IEnumerator PlayPath()

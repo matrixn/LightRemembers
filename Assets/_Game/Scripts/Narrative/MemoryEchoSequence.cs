@@ -18,9 +18,14 @@ namespace LightRemembers.Narrative
         [SerializeField] private MemoryFragmentDefinition fragment;
         [SerializeField] private MemoryFragmentCollector collector;
         [SerializeField] private ExitUnlocker exitUnlocker;
+        [SerializeField] private MemoryAnchorReward completionReward;
+        [SerializeField] private Transform postMemoryMechanism;
+        [SerializeField] private Vector3 postMemoryMotion = new Vector3(0f, 0f, 24f);
+        [SerializeField, Min(0.05f)] private float postMemoryMotionDuration = 0.9f;
         [SerializeField, Min(0f)] private float lingeringSilhouetteDuration = 1.6f;
         private bool _started;
         private bool _completed;
+        private bool _mechanismMoved;
 
         public bool HasStarted => _started;
         public bool IsCompleted => _completed;
@@ -46,6 +51,17 @@ namespace LightRemembers.Narrative
             subtitles = presenter;
             exitUnlocker?.ConfigurePresenter(presenter);
         }
+
+        public void ConfigurePostMemoryMechanism(Transform mechanism, Vector3 eulerMotion, float duration = 0.9f)
+        {
+            postMemoryMechanism = mechanism;
+            postMemoryMotion = eulerMotion;
+            postMemoryMotionDuration = Mathf.Max(0.05f, duration);
+        }
+
+        public void ConfigureCompletionReward(MemoryAnchorReward reward) => completionReward = reward;
+
+        public void ConfigureExitUnlocker(ExitUnlocker exit) => exitUnlocker = exit;
 
         public void Begin()
         {
@@ -84,13 +100,35 @@ namespace LightRemembers.Narrative
             if (unknownChildSilhouette != null) unknownChildSilhouette.SetActive(false);
 
             if (collector != null && fragment != null) collector.TryCollect(fragment);
+            if (!_mechanismMoved && postMemoryMechanism != null)
+            {
+                _mechanismMoved = true;
+                yield return MoveMechanismOnce();
+            }
+            completionReward?.Award();
             MemoryAbilityState.UnlockEcho();
             exitUnlocker?.Unlock();
-            subtitles?.Show(string.Empty, "Something moves in your memory. Echo unlocked.");
+            if (completionReward == null)
+                subtitles?.Show(string.Empty, "Something moves in your memory. Echo unlocked.");
             if (exitUnlocker != null)
                 yield return new WaitUntil(() => exitUnlocker.IsDoorOpen);
             subtitles?.Show(string.Empty, "The door is open. Press E to leave.");
             _completed = true;
+        }
+
+        private IEnumerator MoveMechanismOnce()
+        {
+            var start = postMemoryMechanism.localRotation;
+            var end = start * Quaternion.Euler(postMemoryMotion);
+            var elapsed = 0f;
+            while (elapsed < postMemoryMotionDuration)
+            {
+                elapsed = Mathf.Min(postMemoryMotionDuration, elapsed + Time.deltaTime);
+                var t = elapsed / postMemoryMotionDuration;
+                postMemoryMechanism.localRotation = Quaternion.Slerp(start, end, t * t * (3f - 2f * t));
+                yield return null;
+            }
+            postMemoryMechanism.localRotation = end;
         }
     }
 }

@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b2ea9d649e4066e4081c862fdea24b8c, type: 3}
+  m_Name: OldLight02Echo
+  m_EditorClassIdentifier: LightRemembers.Runtime::LightRemembers.Narrative.DialogueSequence
+  lines:
+  - speaker: Grandfather
+    text: One holds it steady.
+    duration: 2.2
+  - speaker: Grandfather
+    text: The other makes it move.
+    duration: 2.4
+  - speaker: UnknownChild
+    text: That's not fair. He always gets to move it.
+    duration: 3.2
+  - speaker: Child
+    text: Because you always let go.
+    duration: 2.8
+  - speaker: UnknownChild
+    text: I do not.
+    duration: 2.1
+  - speaker: Grandfather
+    text: (laughs)
+    duration: 1.4
+  - speaker: UnknownChild
+    text: You forgot my turn.
+    duration: 3.5

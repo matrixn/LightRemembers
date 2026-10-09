@@ -208,6 +208,153 @@ namespace LightRemembers.Tests.PlayMode
             MemoryAbilityState.SetEchoUnlocked(false);
         }
 
+        [UnityTest]
+        public IEnumerator CompositeEchoRequiresRecallOnlyWhenConfigured()
+        {
+            MemoryAbilityState.UnlockEcho();
+            MemoryAbilityState.SetMemoryAnchorUnlocked(false);
+            var root = new GameObject("RecallEchoCompositeTest");
+            var present = new GameObject("PresentState");
+            present.transform.SetParent(root.transform, false);
+            var memory = new GameObject("MemoryState");
+            memory.transform.SetParent(root.transform, false);
+            var preview = new GameObject("Preview");
+            preview.transform.SetParent(memory.transform, false);
+            var materialized = new GameObject("Materialized");
+            materialized.transform.SetParent(memory.transform, false);
+            var remembered = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            remembered.transform.SetParent(materialized.transform, false);
+            var recall = root.AddComponent<MemoryRecallable>();
+            recall.Configure(present, memory, preview, materialized, 2f);
+
+            var start = new GameObject("EchoStart").transform;
+            var end = new GameObject("EchoEnd").transform;
+            end.position = Vector3.right * 2f;
+            var pathObject = new GameObject("EchoPath");
+            var path = pathObject.AddComponent<EchoPath>();
+            path.Configure(new[] { start, end }, 0.1f, 0f, false);
+            var pathPreview = new GameObject("MotionPreview");
+            var echo = root.AddComponent<MemoryEchoable>();
+            echo.Configure(path, remembered.transform, pathPreview, null, remembered.GetComponentsInChildren<Renderer>());
+            echo.ConfigureRecallRequirement(recall);
+            var composite = root.AddComponent<MemoryComposite>();
+            composite.Configure(recall, echo);
+            composite.SetRevealed(true);
+
+            Assert.That(composite.TryEcho(), Is.False);
+            Assert.That(echo.LastFailureFeedback, Does.Contain("shape is gone"));
+            Assert.That(recall.TryRecall(), Is.True);
+            Assert.That(composite.TryEcho(), Is.True);
+            yield return new WaitForSeconds(0.2f);
+            Assert.That(echo.State, Is.EqualTo(EchoState.Revealed));
+            Assert.That(Vector3.Distance(remembered.transform.position, Vector3.right * 2f), Is.LessThan(0.05f));
+
+            echo.ConfigureRecallRequirement(null);
+            Assert.That(composite.TryEcho(), Is.True, "An intact Echo object may be authored without a Recall dependency.");
+            yield return new WaitForSeconds(0.2f);
+
+            Object.Destroy(root);
+            Object.Destroy(pathObject);
+            Object.Destroy(start.gameObject);
+            Object.Destroy(end.gameObject);
+            Object.Destroy(pathPreview);
+            MemoryAbilityState.SetEchoUnlocked(false);
+            MemoryAbilityState.SetMemoryAnchorUnlocked(false);
+        }
+
+        [UnityTest]
+        public IEnumerator MemoryAnchorRaisesRecallCapacityAndOpensDualRecallGate()
+        {
+            MemoryAbilityState.SetMemoryAnchorUnlocked(false);
+            Assert.That(MemoryAbilityState.RecallCapacity, Is.EqualTo(1));
+            var groupObject = new GameObject("CapacityFocusGroup");
+            var group = groupObject.AddComponent<MemoryFocusGroup>();
+            var first = CreateRecallable("CapacityFirst", 8f);
+            var second = CreateRecallable("CapacitySecond", 8f);
+            first.Recallable.ConfigureFocusGroup(group);
+            second.Recallable.ConfigureFocusGroup(group);
+            first.Recallable.SetRevealed(true);
+            Assert.That(first.Recallable.TryRecall(), Is.True);
+            second.Recallable.SetRevealed(true);
+            Assert.That(second.Recallable.TryRecall(), Is.True);
+            yield return new WaitForSeconds(0.2f);
+            Assert.That(first.Recallable.State, Is.EqualTo(RecallState.Normal));
+            Assert.That(second.Recallable.State, Is.EqualTo(RecallState.Recalled));
+
+            Assert.That(MemoryAbilityState.UnlockMemoryAnchor(), Is.True);
+            Assert.That(MemoryAbilityState.RecallCapacity, Is.EqualTo(2));
+            first.Recallable.SetRevealed(true);
+            Assert.That(first.Recallable.TryRecall(), Is.True);
+            var gateObject = new GameObject("DualRecallGateTest");
+            var barrier = new GameObject("GateBarrier");
+            var gate = gateObject.AddComponent<DualRecallGate>();
+            gate.Configure(first.Recallable, second.Recallable, barrier);
+            yield return null;
+            Assert.That(first.Recallable.State, Is.EqualTo(RecallState.Recalled));
+            Assert.That(second.Recallable.State, Is.EqualTo(RecallState.Recalled));
+            Assert.That(gate.IsOpen, Is.True);
+            Assert.That(barrier.activeSelf, Is.False);
+
+            Object.Destroy(first.Root);
+            Object.Destroy(second.Root);
+            Object.Destroy(groupObject);
+            Object.Destroy(gateObject);
+            Object.Destroy(barrier);
+            MemoryAbilityState.SetMemoryAnchorUnlocked(false);
+        }
+
+        [UnityTest]
+        public IEnumerator MemoryAnchorRewardAwardsFragmentOnlyOnce()
+        {
+            MemoryAbilityState.SetMemoryAnchorUnlocked(false);
+            var collectorObject = new GameObject("AnchorFragmentCollector");
+            var collector = collectorObject.AddComponent<MemoryFragmentCollector>();
+            var fragment = ScriptableObject.CreateInstance<MemoryFragmentDefinition>();
+            fragment.Configure("memory_workshop_02", "Her Turn", "She was always there. Why can't I remember her face?");
+            var rewardObject = new GameObject("MemoryAnchorRewardTest");
+            var reward = rewardObject.AddComponent<MemoryAnchorReward>();
+            reward.Configure(fragment, collector);
+
+            Assert.That(reward.Award(), Is.True);
+            Assert.That(reward.Award(), Is.False);
+            Assert.That(MemoryAbilityState.MemoryAnchorUnlocked, Is.True);
+            Assert.That(MemoryAbilityState.RecallCapacity, Is.EqualTo(2));
+            Assert.That(collector.Count, Is.EqualTo(1));
+            Assert.That(collector.HasCollected("memory_workshop_02"), Is.True);
+
+            Object.Destroy(rewardObject);
+            Object.Destroy(collectorObject);
+            Object.Destroy(fragment);
+            MemoryAbilityState.SetMemoryAnchorUnlocked(false);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator WorkshopLatchRemainsUnlockedAcrossRecreatedSceneObject()
+        {
+            MemoryAbilityState.SetWorkshopShortcutUnlocked(false);
+            var barrier = new GameObject("WorkshopShortcutBarrierTest");
+            var latchObject = new GameObject("WorkshopLatchTest");
+            var latch = latchObject.AddComponent<WorkshopLatch>();
+            latch.Configure(barrier);
+            Assert.That(latch.CanInteract(null), Is.True);
+            latch.Interact(null);
+            Assert.That(latch.IsUnlocked, Is.True);
+            Assert.That(barrier.activeSelf, Is.False);
+
+            var replacementBarrier = new GameObject("ReplacementShortcutBarrierTest");
+            var replacementObject = new GameObject("ReplacementWorkshopLatchTest");
+            replacementObject.AddComponent<WorkshopLatch>().Configure(replacementBarrier);
+            Assert.That(replacementBarrier.activeSelf, Is.False);
+
+            Object.Destroy(barrier);
+            Object.Destroy(latchObject);
+            Object.Destroy(replacementBarrier);
+            Object.Destroy(replacementObject);
+            MemoryAbilityState.SetWorkshopShortcutUnlocked(false);
+            yield return null;
+        }
+
         private static RecallableSetup CreateRecallable(string name, float duration)
         {
             var root = new GameObject(name);
