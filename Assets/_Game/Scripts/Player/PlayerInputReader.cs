@@ -17,6 +17,7 @@ namespace LightRemembers.Player
         private InputAction _interactAction;
         private InputAction _memoryLightAction;
         private InputAction _primaryAbilityAction;
+        private InputAction _secondaryAbilityAction;
 
         public Vector2 Move { get; private set; }
         public Vector2 Look { get; private set; }
@@ -27,6 +28,7 @@ namespace LightRemembers.Player
         public event Action JumpPressed;
         public event Action InteractPressed;
         public event Action PrimaryAbilityPressed;
+        public event Action SecondaryAbilityPressed;
 
         public void Configure(InputActionAsset actions) => inputActions = actions;
 
@@ -48,6 +50,7 @@ namespace LightRemembers.Player
             _interactAction = _playerMap.FindAction("Interact", true);
             _memoryLightAction = _playerMap.FindAction("MemoryLight", true);
             _primaryAbilityAction = _playerMap.FindAction("PrimaryAbility", true);
+            _secondaryAbilityAction = _playerMap.FindAction("SecondaryAbility", true);
 
             _moveAction.performed += OnMove;
             _moveAction.canceled += OnMove;
@@ -56,6 +59,7 @@ namespace LightRemembers.Player
             _jumpAction.performed += OnJump;
             _interactAction.performed += OnInteract;
             _primaryAbilityAction.performed += OnPrimaryAbility;
+            _secondaryAbilityAction.performed += OnSecondaryAbility;
             _playerMap.Enable();
         }
 
@@ -64,6 +68,7 @@ namespace LightRemembers.Player
             if (_playerMap == null)
                 return;
 
+            _secondaryAbilityAction.performed -= OnSecondaryAbility;
             _playerMap.Disable();
             _playerMap.Dispose();
             _playerMap = null;
@@ -74,6 +79,7 @@ namespace LightRemembers.Player
             _interactAction = null;
             _memoryLightAction = null;
             _primaryAbilityAction = null;
+            _secondaryAbilityAction = null;
             Move = Vector2.zero;
             Look = Vector2.zero;
         }
@@ -89,5 +95,6 @@ namespace LightRemembers.Player
         private void OnJump(InputAction.CallbackContext context) => JumpPressed?.Invoke();
         private void OnInteract(InputAction.CallbackContext context) => InteractPressed?.Invoke();
         private void OnPrimaryAbility(InputAction.CallbackContext context) => PrimaryAbilityPressed?.Invoke();
+        private void OnSecondaryAbility(InputAction.CallbackContext context) => SecondaryAbilityPressed?.Invoke();
     }
 }

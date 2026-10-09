@@ -87,6 +87,28 @@ namespace LightRemembers.Editor
                 group.ResetGroup();
         }
 
+        [MenuItem("Light Remembers/Prototype/Upgrade Old Light Exit Interaction")]
+        public static void UpgradeOldLightExitInteraction()
+        {
+            var scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+            var exitObject = EditorAutomation.FindGameObject(scene, "ChamberExit");
+            var barrier = EditorAutomation.FindGameObject(scene, "ExitBarrier");
+            var panel = EditorAutomation.FindGameObject(scene, "SubtitlePanel");
+            if (exitObject == null || barrier == null || panel == null)
+                throw new InvalidDataException("OldLight01 must contain ChamberExit, ExitBarrier, and SubtitlePanel.");
+
+            var presenter = panel.GetComponent<SubtitlePresenter>();
+            var exit = exitObject.GetComponent<ExitUnlocker>();
+            if (presenter == null || exit == null)
+                throw new InvalidDataException("OldLight01 exit or subtitle presenter is missing its runtime component.");
+
+            exit.Configure(barrier, "BoathousePrototype", presenter);
+            var sequence = EditorAutomation.FindGameObject(scene, "MemoryEcho")?.GetComponent<MemoryEchoSequence>();
+            sequence?.ConfigurePresenter(presenter);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+        }
+
         private static void BuildBrokenPath(Transform environment, Transform gameplay, Material stone, Material memory, Material ghost, Material hint)
         {
             var room = Child("Room01_BrokenPath", environment);

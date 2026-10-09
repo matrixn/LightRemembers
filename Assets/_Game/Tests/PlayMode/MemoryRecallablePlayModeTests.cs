@@ -11,6 +11,91 @@ namespace LightRemembers.Tests.PlayMode
     public sealed class MemoryRecallablePlayModeTests
     {
         [UnityTest]
+        public IEnumerator EchoTravelsReturnsAndCanBeReplayed()
+        {
+            var root = new GameObject("EchoRuntimeTest");
+            var moving = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            moving.name = "EchoMovingObject";
+            moving.transform.SetParent(root.transform, false);
+            var pathObject = new GameObject("EchoPath");
+            var start = new GameObject("Start").transform;
+            start.position = Vector3.zero;
+            var end = new GameObject("End").transform;
+            end.position = Vector3.right * 2f;
+            var path = pathObject.AddComponent<EchoPath>();
+            path.Configure(new[] { start, end }, 0.25f, 0.25f, true);
+            var preview = new GameObject("EchoPathPreview");
+            var echo = root.AddComponent<MemoryEchoable>();
+            echo.Configure(path, moving.transform, preview, null, moving.GetComponentsInChildren<Renderer>());
+            MemoryAbilityState.UnlockEcho();
+            echo.SetRevealed(true);
+
+            Assert.That(echo.State, Is.EqualTo(EchoState.Revealed));
+            Assert.That(echo.TryEcho(), Is.True);
+            Assert.That(echo.State, Is.EqualTo(EchoState.Echoing));
+            yield return new WaitForSeconds(0.35f);
+            Assert.That(moving.transform.position.x, Is.GreaterThan(1.8f));
+            echo.SetRevealed(false);
+            yield return new WaitForSeconds(0.5f);
+            Assert.That(echo.State, Is.EqualTo(EchoState.Idle));
+            Assert.That(moving.transform.position.x, Is.LessThan(0.05f));
+
+            echo.SetRevealed(true);
+            Assert.That(echo.TryEcho(), Is.True);
+            yield return new WaitForSeconds(0.9f);
+            Assert.That(echo.State, Is.EqualTo(EchoState.Revealed));
+            Object.Destroy(root);
+            Object.Destroy(pathObject);
+            Object.Destroy(start.gameObject);
+            Object.Destroy(end.gameObject);
+            Object.Destroy(preview);
+            MemoryAbilityState.SetEchoUnlocked(false);
+        }
+
+        [UnityTest]
+        public IEnumerator EchoRideSurfaceCarriesCharacterControllerWithPlatform()
+        {
+            var platform = new GameObject("RideVolume");
+            var trigger = platform.AddComponent<BoxCollider>();
+            trigger.isTrigger = true;
+            trigger.size = new Vector3(4f, 4f, 4f);
+            var surface = platform.AddComponent<EchoRideSurface>();
+            surface.Configure(trigger);
+            var player = new GameObject("EchoPassenger");
+            var controller = player.AddComponent<CharacterController>();
+            player.transform.position = Vector3.zero;
+            Physics.SyncTransforms();
+            yield return new WaitForFixedUpdate();
+            Assert.That(surface.RiderCount, Is.EqualTo(1));
+
+            platform.transform.position = Vector3.right;
+            surface.CarryRiders(Vector3.zero, Quaternion.identity, Vector3.right, Quaternion.identity);
+            Assert.That(controller.transform.position.x, Is.EqualTo(1f).Within(0.05f));
+            Object.Destroy(platform);
+            Object.Destroy(player);
+        }
+
+        [UnityTest]
+        public IEnumerator ChamberExitOpensBeforeBecomingInteractable()
+        {
+            var exitObject = new GameObject("ExitInteractionTest");
+            var door = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            door.transform.SetParent(exitObject.transform, false);
+            var exit = exitObject.AddComponent<ExitUnlocker>();
+            exit.Configure(door, string.Empty);
+            Assert.That(exit.CanInteract(null), Is.False);
+            exit.Unlock();
+            Assert.That(exit.CanInteract(null), Is.False);
+
+            yield return new WaitForSeconds(1f);
+
+            Assert.That(exit.IsDoorOpen, Is.True);
+            Assert.That(exit.CanInteract(null), Is.True);
+            exit.Interact(null);
+            Object.Destroy(exitObject);
+        }
+
+        [UnityTest]
         public IEnumerator RecallExpiresAndRestoresPresentState()
         {
             var setup = CreateRecallable("ExpiryTest", 0.15f);
@@ -81,6 +166,7 @@ namespace LightRemembers.Tests.PlayMode
         [UnityTest]
         public IEnumerator EchoSequenceCollectsFragmentAndUnlocksExitOnlyOnce()
         {
+            MemoryAbilityState.SetEchoUnlocked(false);
             var echoObject = new GameObject("EchoSequenceTest");
             var child = new GameObject("ChildEchoTest");
             var grandfather = new GameObject("GrandfatherEchoTest");
@@ -109,6 +195,8 @@ namespace LightRemembers.Tests.PlayMode
             Assert.That(collector.Count, Is.EqualTo(1));
             Assert.That(collector.HasCollected("test_fragment"), Is.True);
             Assert.That(exit.IsUnlocked, Is.True);
+            Assert.That(exit.IsDoorOpen, Is.True);
+            Assert.That(MemoryAbilityState.EchoUnlocked, Is.True);
 
             Object.Destroy(echoObject);
             Object.Destroy(child);
@@ -117,6 +205,7 @@ namespace LightRemembers.Tests.PlayMode
             Object.Destroy(collectorObject);
             Object.Destroy(exitObject);
             Object.Destroy(fragment);
+            MemoryAbilityState.SetEchoUnlocked(false);
         }
 
         private static RecallableSetup CreateRecallable(string name, float duration)

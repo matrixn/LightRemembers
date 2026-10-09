@@ -1,5 +1,6 @@
 using System.Collections;
 using LightRemembers.Interaction;
+using LightRemembers.Memory;
 using LightRemembers.UI;
 using UnityEngine;
 
@@ -40,7 +41,11 @@ namespace LightRemembers.Narrative
             lingeringSilhouetteDuration = lingeringDuration;
         }
 
-        public void ConfigurePresenter(SubtitlePresenter presenter) => subtitles = presenter;
+        public void ConfigurePresenter(SubtitlePresenter presenter)
+        {
+            subtitles = presenter;
+            exitUnlocker?.ConfigurePresenter(presenter);
+        }
 
         public void Begin()
         {
@@ -79,7 +84,12 @@ namespace LightRemembers.Narrative
             if (unknownChildSilhouette != null) unknownChildSilhouette.SetActive(false);
 
             if (collector != null && fragment != null) collector.TryCollect(fragment);
+            MemoryAbilityState.UnlockEcho();
             exitUnlocker?.Unlock();
+            subtitles?.Show(string.Empty, "Something moves in your memory. Echo unlocked.");
+            if (exitUnlocker != null)
+                yield return new WaitUntil(() => exitUnlocker.IsDoorOpen);
+            subtitles?.Show(string.Empty, "The door is open. Press E to leave.");
             _completed = true;
         }
     }

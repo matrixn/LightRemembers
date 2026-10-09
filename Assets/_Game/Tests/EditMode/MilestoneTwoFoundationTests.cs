@@ -69,7 +69,7 @@ namespace LightRemembers.Tests.EditMode
             var playerMap = actions.FindActionMap("Player", true);
             var requiredActions = new[]
             {
-                "Move", "Look", "Jump", "Sprint", "Interact", "MemoryLight",
+                "Move", "Look", "Jump", "Sprint", "Interact", "MemoryLight", "SecondaryAbility",
                 "PrimaryAbility", "SecondaryAbility", "Pause"
             };
             foreach (var actionName in requiredActions)

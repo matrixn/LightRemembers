@@ -71,6 +71,17 @@ namespace LightRemembers.Tests.EditMode
             Assert.That(UnityEditor.AssetDatabase.LoadAssetAtPath<MemoryFragmentDefinition>("Assets/_Game/Art/MemoryFragments/memory_boathouse_01.asset"), Is.Not.Null);
         }
 
+        [Test]
+        public void ChamberExitWaitsForInteractAndHasDoorAnimationConfigured()
+        {
+            EditorSceneManager.OpenScene(OldLight01Setup.ScenePath, UnityEditor.SceneManagement.OpenSceneMode.Single);
+            var exit = Object.FindAnyObjectByType<ExitUnlocker>();
+            Assert.That(exit, Is.Not.Null);
+            Assert.That(exit.CanInteract(null), Is.False);
+            Assert.That(Find("ExitBarrier"), Is.Not.Null);
+            Assert.That(Find("SubtitlePanel"), Is.Not.Null);
+        }
+
         private static GameObject Find(string name) => UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene().GetRootGameObjects()
             .SelectMany(root => root.GetComponentsInChildren<Transform>(true))
             .FirstOrDefault(transform => transform.name == name)?.gameObject;

@@ -28,7 +28,10 @@ namespace LightRemembers.Memory
         public void Configure(PlayerInputReader reader, Transform origin, Transform aim, Light beam)
         {
             if (inputReader != null)
+            {
                 inputReader.PrimaryAbilityPressed -= TryRecallCurrentTarget;
+                inputReader.SecondaryAbilityPressed -= TryEchoCurrentTarget;
+            }
             inputReader = reader;
             lightOrigin = origin;
             aimTransform = aim;
@@ -101,7 +104,10 @@ namespace LightRemembers.Memory
         private void OnDisable()
         {
             if (inputReader != null)
+            {
                 inputReader.PrimaryAbilityPressed -= TryRecallCurrentTarget;
+                inputReader.SecondaryAbilityPressed -= TryEchoCurrentTarget;
+            }
             SetTarget(null);
         }
 
@@ -111,12 +117,20 @@ namespace LightRemembers.Memory
                 recallable.TryRecall();
         }
 
+        private void TryEchoCurrentTarget()
+        {
+            if (_currentTarget is IMemoryEchoable echoable)
+                echoable.TryEcho();
+        }
+
         private void BindPrimaryAbility()
         {
             if (!isActiveAndEnabled || inputReader == null)
                 return;
             inputReader.PrimaryAbilityPressed -= TryRecallCurrentTarget;
             inputReader.PrimaryAbilityPressed += TryRecallCurrentTarget;
+            inputReader.SecondaryAbilityPressed -= TryEchoCurrentTarget;
+            inputReader.SecondaryAbilityPressed += TryEchoCurrentTarget;
         }
 
         private void SetTarget(IMemoryLightTarget target)
