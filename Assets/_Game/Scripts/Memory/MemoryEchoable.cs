@@ -1,4 +1,5 @@
 using System.Collections;
+using System;
 using UnityEngine;
 
 namespace LightRemembers.Memory
@@ -23,6 +24,7 @@ namespace LightRemembers.Memory
         private bool _isRevealed;
         private EchoState _state;
         private float _rejectionPulseRemaining;
+        private bool _memoryCorrupted;
 
         public EchoState State => _state;
         public bool IsRevealed => _isRevealed;
@@ -32,6 +34,7 @@ namespace LightRemembers.Memory
         public MemoryRecallable RecallRequirement => recallRequirement;
         public bool RequiresRecall => recallRequirement != null;
         public string LastFailureFeedback { get; private set; }
+        public event Action EchoCompleted;
 
         public void Configure(EchoPath echoPath, Transform target, GameObject preview, EchoRideSurface surface, Renderer[] renderers = null)
         {
@@ -48,12 +51,15 @@ namespace LightRemembers.Memory
 
         private void OnEnable()
         {
+            MemoryAbilityState.MemoryStateChanged += OnMemoryStateChanged;
+            _memoryCorrupted = MemoryAbilityState.EchoCorrupted;
             if (pathPreview != null)
-                pathPreview.SetActive(_state == EchoState.Revealed);
+                pathPreview.SetActive(_isRevealed && !_memoryCorrupted);
         }
 
         private void OnDisable()
         {
+            MemoryAbilityState.MemoryStateChanged -= OnMemoryStateChanged;
             if (_playback != null)
             {
                 StopCoroutine(_playback);
@@ -68,7 +74,7 @@ namespace LightRemembers.Memory
                 return;
             _state = revealed ? EchoState.Revealed : EchoState.Idle;
             if (pathPreview != null)
-                pathPreview.SetActive(revealed);
+                pathPreview.SetActive(revealed && !_memoryCorrupted);
         }
 
         public bool TryEcho()
@@ -81,7 +87,7 @@ namespace LightRemembers.Memory
                 return false;
             }
 
-            if (_state != EchoState.Revealed || !MemoryAbilityState.EchoUnlocked ||
+            if (_state != EchoState.Revealed || !MemoryAbilityState.EchoAvailable ||
                 path == null || !path.IsValid || movingObject == null)
                 return false;
 
@@ -94,6 +100,23 @@ namespace LightRemembers.Memory
         }
 
         public void ConfigureRecallRequirement(MemoryRecallable requirement) => recallRequirement = requirement;
+
+        public void ResetToStart()
+        {
+            if (_playback != null)
+            {
+                StopCoroutine(_playback);
+                _playback = null;
+            }
+            if (path != null && path.IsValid && movingObject != null)
+                movingObject.SetPositionAndRotation(path.Waypoints[0].position, path.Waypoints[0].rotation);
+            _rejectionPulseRemaining = 0f;
+            _isRevealed = false;
+            _state = EchoState.Idle;
+            if (pathPreview != null)
+                pathPreview.SetActive(false);
+            SetEmission(idleEmission);
+        }
 
         private void Update()
         {
@@ -118,8 +141,22 @@ namespace LightRemembers.Memory
             _playback = null;
             _state = _isRevealed ? EchoState.Revealed : EchoState.Idle;
             if (pathPreview != null)
-                pathPreview.SetActive(_isRevealed);
+                pathPreview.SetActive(_isRevealed && !_memoryCorrupted);
             SetEmission(idleEmission);
+            EchoCompleted?.Invoke();
+        }
+
+        private void OnMemoryStateChanged(MemoryStateChange change)
+        {
+            if (change.Ability != MemoryAbility.Echo)
+                return;
+            _memoryCorrupted = !change.IsAvailable;
+            if (pathPreview != null)
+                pathPreview.SetActive(_isRevealed && !_memoryCorrupted && _state != EchoState.Echoing);
+            if (_memoryCorrupted && _state != EchoState.Echoing)
+                SetEmission(echoEmission * 0.12f);
+            else if (_state != EchoState.Echoing)
+                SetEmission(idleEmission);
         }
 
         private IEnumerator Traverse(float start, float end, float duration)

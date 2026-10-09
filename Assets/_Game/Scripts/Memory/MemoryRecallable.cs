@@ -1,4 +1,5 @@
 using UnityEngine;
+using System;
 
 namespace LightRemembers.Memory
 {
@@ -43,6 +44,7 @@ namespace LightRemembers.Memory
 
         public RecallState State => _state;
         public bool IsRevealed => _isTargeted;
+        public event Action<RecallState> StateChanged;
         public float RecallDuration
         {
             get => recallDuration;
@@ -132,16 +134,25 @@ namespace LightRemembers.Memory
 
         public bool TryRecall()
         {
-            if (_state != RecallState.Revealed)
+            if (_state != RecallState.Revealed || !MemoryAbilityState.RecallAvailable)
                 return false;
 
             focusGroup?.Claim(this);
             _remainingDuration = recallDuration;
             _releasePending = false;
             _occupancyPollTimer = 0f;
-            _occupants = Object.FindObjectsByType<CharacterController>(FindObjectsInactive.Exclude);
+            _occupants = UnityEngine.Object.FindObjectsByType<CharacterController>(FindObjectsInactive.Exclude);
             EnterState(RecallState.Recalled);
             return true;
+        }
+
+        public void ForceResetToPresent()
+        {
+            _remainingDuration = 0f;
+            _releasePending = false;
+            _occupancyPollTimer = 0f;
+            _isTargeted = false;
+            EnterState(RecallState.Normal);
         }
 
         /// <summary>Requests release using the same occupancy-safe policy as timed expiry.</summary>
@@ -194,6 +205,7 @@ namespace LightRemembers.Memory
                 ApplyPreviewAppearance();
             else if (nextState == RecallState.Recalled)
                 ApplyMaterializedAppearance(1f);
+            StateChanged?.Invoke(nextState);
         }
 
         private void ApplyPreviewAppearance()

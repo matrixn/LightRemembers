@@ -23,5 +23,7 @@ namespace LightRemembers.Narrative
     {
         [SerializeField] private DialogueLine[] lines;
         public DialogueLine[] Lines => lines;
+
+        public void Configure(DialogueLine[] sequenceLines) => lines = sequenceLines;
     }
 }
