@@ -1,0 +1,180 @@
+# ============================================================
+# Light Remembers - Unity Git Ignore
+# Unity 6000.6.x
+# ============================================================
+
+
+# ------------------------------------------------------------
+# Unity generated folders
+# ------------------------------------------------------------
+
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+
+# Unity User Settings
+UserSettings/
+
+
+# ------------------------------------------------------------
+# Unity generated files
+# ------------------------------------------------------------
+
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Crash reports
+sysinfo.txt
+
+# Unity profiler
+*.raw
+
+# Unity temporary artifacts
+*.tmp
+
+
+# ------------------------------------------------------------
+# IDE / Editor
+# ------------------------------------------------------------
+
+# Visual Studio
+.vs/
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.unityproj
+*.sln.docstates
+
+# VS Code
+.vscode/
+
+# Rider / JetBrains
+.idea/
+*.sln.iml
+
+# MonoDevelop
+*.userprefs
+
+
+# ------------------------------------------------------------
+# Operating system
+# ------------------------------------------------------------
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+
+# ------------------------------------------------------------
+# Unity Asset Store / Package artifacts
+# ------------------------------------------------------------
+
+# Asset Store tools may generate this
+/[Aa]ssets/AssetStoreTools*
+
+# Package Manager local cache artifacts should not be committed
+Packages/packages-lock.json.tmp
+
+
+# ------------------------------------------------------------
+# Builds / executables
+# ------------------------------------------------------------
+
+*.apk
+*.aab
+*.unitypackage
+
+# Windows build outputs
+*.exe
+*.dll
+*.app
+*.x86
+*.x86_64
+
+# Android generated
+.gradle/
+
+
+# ------------------------------------------------------------
+# Logs / reports / coverage
+# ------------------------------------------------------------
+
+TestResults/
+TestResults-*/
+CodeCoverage/
+coverage/
+*.log
+
+
+# ------------------------------------------------------------
+# Temporary exports / captures
+# ------------------------------------------------------------
+
+Screenshots/
+Captures/
+TempExports/
+
+
+# ------------------------------------------------------------
+# Local environment / secrets
+# ------------------------------------------------------------
+
+.env
+.env.*
+!.env.example
+
+*.keystore
+*.jks
+*.p12
+*.pfx
+*.pem
+*.key
+
+# Android signing properties
+keystore.properties
+local.properties
+
+
+# ------------------------------------------------------------
+# AI / local tooling transient files
+# ------------------------------------------------------------
+
+# Keep AGENTS.md and project-level Codex instructions versioned.
+# Ignore only local/transient agent state if generated.
+
+.codex/tmp/
+.codex/cache/
+
+
+# ------------------------------------------------------------
+# Misc temporary files
+# ------------------------------------------------------------
+
+*.bak
+*.orig
+*.rej
+*.swp
+*.swo
+*~
