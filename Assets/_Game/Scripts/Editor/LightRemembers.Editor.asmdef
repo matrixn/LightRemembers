@@ -2,7 +2,9 @@
     "name": "LightRemembers.Editor",
     "rootNamespace": "LightRemembers.Editor",
     "references": [
-        "LightRemembers.Runtime"
+        "LightRemembers.Runtime",
+        "Unity.Cinemachine",
+        "Unity.InputSystem"
     ],
     "includePlatforms": [
         "Editor"
