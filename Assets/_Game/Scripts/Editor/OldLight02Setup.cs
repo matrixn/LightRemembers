@@ -282,7 +282,7 @@ namespace LightRemembers.Editor
             trigger.center = new Vector3(0f, 1f, 1.3f);
             trigger.size = new Vector3(5f, 2.5f, 3f);
             var unlocker = exit.gameObject.AddComponent<ExitUnlocker>();
-            unlocker.Configure(barrier, string.Empty, subtitles);
+            unlocker.Configure(barrier, LighthouseApproachSetup.SceneName, subtitles);
             if (sequence != null)
             {
                 sequence.ConfigureExitUnlocker(unlocker);

@@ -8144,7 +8144,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: LightRemembers.Runtime::LightRemembers.Interaction.ExitUnlocker
   barrier: {fileID: 458189279}
-  returnScene: 
+  returnScene: LighthouseApproach01
   subtitles: {fileID: 1635973124}
   openDistance: 3.5
   openDuration: 0.8
