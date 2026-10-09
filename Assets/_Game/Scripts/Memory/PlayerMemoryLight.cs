@@ -1,4 +1,5 @@
 using LightRemembers.Player;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace LightRemembers.Memory
@@ -16,18 +17,23 @@ namespace LightRemembers.Memory
         [SerializeField] private LayerMask targetLayers = ~0;
 
         private readonly RaycastHit[] _hits = new RaycastHit[HitCapacity];
-        private MemoryRevealable _currentTarget;
+        private readonly List<MonoBehaviour> _componentBuffer = new List<MonoBehaviour>(8);
+        private IMemoryLightTarget _currentTarget;
         private Vector3 _lastHitPoint;
 
-        public MemoryRevealable CurrentTarget => _currentTarget;
+        public IMemoryLightTarget CurrentTarget => _currentTarget;
+        public IMemoryRecallable CurrentRecallableTarget => _currentTarget as IMemoryRecallable;
         public float MaximumRange { get => maximumRange; set => maximumRange = Mathf.Max(0f, value); }
 
         public void Configure(PlayerInputReader reader, Transform origin, Transform aim, Light beam)
         {
+            if (inputReader != null)
+                inputReader.PrimaryAbilityPressed -= TryRecallCurrentTarget;
             inputReader = reader;
             lightOrigin = origin;
             aimTransform = aim;
             focusedLight = beam;
+            BindPrimaryAbility();
         }
 
         private void Awake()
@@ -36,6 +42,11 @@ namespace LightRemembers.Memory
                 aimTransform = Camera.main.transform;
             if (focusedLight != null)
                 focusedLight.enabled = false;
+        }
+
+        private void OnEnable()
+        {
+            BindPrimaryAbility();
         }
 
         private void Update()
@@ -80,23 +91,56 @@ namespace LightRemembers.Memory
                 return;
             }
 
-            if (_currentTarget != null && nearestCollider.transform.IsChildOf(_currentTarget.transform))
+            if (_currentTarget is Component currentComponent && currentComponent != null &&
+                (nearestCollider.transform == currentComponent.transform || nearestCollider.transform.IsChildOf(currentComponent.transform)))
                 return;
 
-            SetTarget(nearestCollider.GetComponentInParent<MemoryRevealable>());
+            SetTarget(GetMemoryTarget(nearestCollider));
         }
 
-        private void OnDisable() => SetTarget(null);
-
-        private void SetTarget(MemoryRevealable target)
+        private void OnDisable()
         {
-            if (_currentTarget == target)
+            if (inputReader != null)
+                inputReader.PrimaryAbilityPressed -= TryRecallCurrentTarget;
+            SetTarget(null);
+        }
+
+        private void TryRecallCurrentTarget()
+        {
+            if (_currentTarget is IMemoryRecallable recallable)
+                recallable.TryRecall();
+        }
+
+        private void BindPrimaryAbility()
+        {
+            if (!isActiveAndEnabled || inputReader == null)
+                return;
+            inputReader.PrimaryAbilityPressed -= TryRecallCurrentTarget;
+            inputReader.PrimaryAbilityPressed += TryRecallCurrentTarget;
+        }
+
+        private void SetTarget(IMemoryLightTarget target)
+        {
+            if (ReferenceEquals(_currentTarget, target))
                 return;
             if (_currentTarget != null)
                 _currentTarget.SetRevealed(false);
             _currentTarget = target;
             if (_currentTarget != null)
                 _currentTarget.SetRevealed(true);
+        }
+
+        private IMemoryLightTarget GetMemoryTarget(Collider targetCollider)
+        {
+            _componentBuffer.Clear();
+            targetCollider.GetComponentsInParent(true, _componentBuffer);
+            foreach (var behaviour in _componentBuffer)
+            {
+                if (behaviour is IMemoryLightTarget target)
+                    return target;
+            }
+
+            return null;
         }
 
         private void OnDrawGizmosSelected()
