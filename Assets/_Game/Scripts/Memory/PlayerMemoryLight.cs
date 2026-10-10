@@ -14,6 +14,7 @@ namespace LightRemembers.Memory
         [SerializeField] private Transform lightOrigin;
         [SerializeField] private Transform aimTransform;
         [SerializeField] private Light focusedLight;
+        [SerializeField] private ParticleSystem beamParticles;
         [SerializeField, Min(0f)] private float maximumRange = 12f;
         [SerializeField] private LayerMask targetLayers = ~0;
 
@@ -41,6 +42,8 @@ namespace LightRemembers.Memory
             lightOrigin = origin;
             aimTransform = aim;
             focusedLight = beam;
+            if (beamParticles == null && origin != null)
+                beamParticles = origin.GetComponentInChildren<ParticleSystem>(true);
             BindPrimaryAbility();
         }
 
@@ -50,6 +53,10 @@ namespace LightRemembers.Memory
                 aimTransform = Camera.main.transform;
             if (focusedLight != null)
                 focusedLight.enabled = false;
+            if (beamParticles == null && lightOrigin != null)
+                beamParticles = lightOrigin.GetComponentInChildren<ParticleSystem>(true);
+            if (beamParticles != null)
+                beamParticles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         }
 
         private void OnEnable()
@@ -68,6 +75,11 @@ namespace LightRemembers.Memory
             var active = inputReader.MemoryLightHeld;
             if (focusedLight != null)
                 focusedLight.enabled = active;
+            if (beamParticles != null && active != beamParticles.isEmitting)
+            {
+                if (active) beamParticles.Play(true);
+                else beamParticles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            }
             if (!active)
             {
                 SetTarget(null);
@@ -115,6 +127,8 @@ namespace LightRemembers.Memory
                 inputReader.ForgetPressed -= TryForgetCurrentTarget;
             }
             SetTarget(null);
+            if (beamParticles != null)
+                beamParticles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         }
 
         private void TryRecallCurrentTarget()
