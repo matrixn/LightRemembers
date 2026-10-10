@@ -8,6 +8,7 @@ namespace LightRemembers.Memory
         Approach,
         Attack,
         Unstable,
+        Search,
         Repelled,
         Return
     }

@@ -52,7 +52,8 @@ namespace LightRemembers.Memory
 
         public override bool CanInteract(Transform interactor) => IsRevealed && corruptionController != null &&
             ((ability == MemoryAbility.Recall && MemoryAbilityState.RecallCorrupted) ||
-             (ability == MemoryAbility.Echo && MemoryAbilityState.EchoCorrupted));
+             (ability == MemoryAbility.Echo && MemoryAbilityState.EchoCorrupted) ||
+             (ability == MemoryAbility.Forget && MemoryAbilityState.ForgetCorrupted));
 
         public override void Interact(Transform interactor)
         {
@@ -94,7 +95,8 @@ namespace LightRemembers.Memory
         private void UpdateAbilityLabel()
         {
             if (abilityLabel != null)
-                abilityLabel.text = ability == MemoryAbility.Recall ? "E - RECALL" : "E - ECHO";
+            abilityLabel.text = ability == MemoryAbility.Recall ? "E - RECALL" :
+                ability == MemoryAbility.Echo ? "E - ECHO" : "E - FORGET";
         }
     }
 }

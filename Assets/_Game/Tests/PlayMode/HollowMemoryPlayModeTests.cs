@@ -15,10 +15,13 @@ namespace LightRemembers.Tests.PlayMode
         private MemoryCorruptionController _corruption;
         private MemoryRemnant _recallRemnant;
         private MemoryRemnant _echoRemnant;
+        private string _savedProgress;
 
         [SetUp]
         public void SetUp()
         {
+            _savedProgress = MemoryProgressionSave.CaptureRawSave();
+            MemoryProgressionSave.DeleteSave();
             MemoryAbilityState.RestoreAllMemories();
             MemoryAbilityState.SetEchoUnlocked(true);
             MemoryAbilityState.SetSteadyLightUnlocked(false);
@@ -42,6 +45,7 @@ namespace LightRemembers.Tests.PlayMode
             MemoryAbilityState.RestoreAllMemories();
             MemoryAbilityState.SetEchoUnlocked(false);
             MemoryAbilityState.SetSteadyLightUnlocked(false);
+            MemoryProgressionSave.RestoreRawSave(_savedProgress);
             yield return null;
         }
 

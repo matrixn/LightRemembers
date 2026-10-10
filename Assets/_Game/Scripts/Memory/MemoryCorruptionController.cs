@@ -9,6 +9,7 @@ namespace LightRemembers.Memory
         [SerializeField] private MemoryIntegrity integrity;
         [SerializeField] private MemoryRemnant recallRemnant;
         [SerializeField] private MemoryRemnant echoRemnant;
+        [SerializeField] private MemoryRemnant forgetRemnant;
         [SerializeField] private MemoryCollapseHandler collapseHandler;
         [SerializeField] private MemoryEncounterResetter encounterResetter;
         [SerializeField] private SanctuaryLight sanctuary;
@@ -26,11 +27,13 @@ namespace LightRemembers.Memory
 
         public void Configure(MemoryIntegrity memoryIntegrity, MemoryRemnant recallMemory,
             MemoryRemnant echoMemory, MemoryCollapseHandler collapse, MemoryEncounterResetter resetter,
-            SanctuaryLight safeLight, SubtitlePresenter presenter, float hitImmunity = 2.5f)
+            SanctuaryLight safeLight, SubtitlePresenter presenter, float hitImmunity = 2.5f,
+            MemoryRemnant forgetMemory = null)
         {
             integrity = memoryIntegrity;
             recallRemnant = recallMemory;
             echoRemnant = echoMemory;
+            forgetRemnant = forgetMemory;
             collapseHandler = collapse;
             encounterResetter = resetter;
             sanctuary = safeLight;
@@ -103,6 +106,15 @@ namespace LightRemembers.Memory
             encounterResetter?.ResetTransientMemory();
             recallRemnant?.Hide();
             echoRemnant?.Hide();
+            forgetRemnant?.Hide();
+        }
+
+        public bool DebugCorruptForgetForPrototype()
+        {
+            if (_collapsing || integrity == null || !integrity.LoseOne() || !MemoryAbilityState.CorruptForget())
+                return false;
+            forgetRemnant?.Appear(MemoryAbility.Forget, this);
+            return true;
         }
 
 #if UNITY_EDITOR

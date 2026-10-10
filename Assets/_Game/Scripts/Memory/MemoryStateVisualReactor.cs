@@ -20,13 +20,13 @@ namespace LightRemembers.Memory
             ability = affectedAbility;
             renderers = targets;
             corruptionFragments = fragments;
-            Apply(ability == MemoryAbility.Recall ? MemoryAbilityState.RecallAvailable : MemoryAbilityState.EchoAvailable);
+            Apply(GetAvailability());
         }
 
         private void OnEnable()
         {
             MemoryAbilityState.MemoryStateChanged += OnMemoryStateChanged;
-            Apply(ability == MemoryAbility.Recall ? MemoryAbilityState.RecallAvailable : MemoryAbilityState.EchoAvailable);
+            Apply(GetAvailability());
         }
 
         private void OnDisable() => MemoryAbilityState.MemoryStateChanged -= OnMemoryStateChanged;
@@ -42,6 +42,16 @@ namespace LightRemembers.Memory
         {
             if (change.Ability == ability)
                 Apply(change.IsAvailable);
+        }
+
+        private bool GetAvailability()
+        {
+            switch (ability)
+            {
+                case MemoryAbility.Recall: return MemoryAbilityState.RecallAvailable;
+                case MemoryAbility.Echo: return MemoryAbilityState.EchoAvailable;
+                default: return MemoryAbilityState.ForgetAvailable;
+            }
         }
 
         private void Apply(bool available)

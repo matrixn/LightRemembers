@@ -1,5 +1,6 @@
 using LightRemembers.Player;
 using System.Collections.Generic;
+using System;
 using UnityEngine;
 
 namespace LightRemembers.Memory
@@ -26,6 +27,7 @@ namespace LightRemembers.Memory
             ? composite.Recall
             : _currentTarget as IMemoryRecallable;
         public float MaximumRange { get => maximumRange; set => maximumRange = Mathf.Max(0f, value); }
+        public event Action<string> ActionRejected;
 
         public void Configure(PlayerInputReader reader, Transform origin, Transform aim, Light beam)
         {
@@ -33,6 +35,7 @@ namespace LightRemembers.Memory
             {
                 inputReader.PrimaryAbilityPressed -= TryRecallCurrentTarget;
                 inputReader.SecondaryAbilityPressed -= TryEchoCurrentTarget;
+                inputReader.ForgetPressed -= TryForgetCurrentTarget;
             }
             inputReader = reader;
             lightOrigin = origin;
@@ -109,25 +112,70 @@ namespace LightRemembers.Memory
             {
                 inputReader.PrimaryAbilityPressed -= TryRecallCurrentTarget;
                 inputReader.SecondaryAbilityPressed -= TryEchoCurrentTarget;
+                inputReader.ForgetPressed -= TryForgetCurrentTarget;
             }
             SetTarget(null);
         }
 
         private void TryRecallCurrentTarget()
         {
+            var succeeded = false;
             if (_currentTarget is MemoryComposite composite)
-                composite.TryRecall();
+                succeeded = composite.TryRecall();
             else if (_currentTarget is IMemoryRecallable recallable)
-                recallable.TryRecall();
+                succeeded = recallable.TryRecall();
+            if (!succeeded && GetRecallable(_currentTarget) != null)
+            {
+                var forgettable = GetForgettable(_currentTarget);
+                ActionRejected?.Invoke(forgettable != null && forgettable.State == ForgetState.Forgotten
+                    ? "There's nothing left to hold onto."
+                    : "This memory won't hold its shape yet.");
+            }
         }
 
         private void TryEchoCurrentTarget()
         {
+            var succeeded = false;
             if (_currentTarget is MemoryComposite composite)
-                composite.TryEcho();
+                succeeded = composite.TryEcho();
             else if (_currentTarget is IMemoryEchoable echoable)
-                echoable.TryEcho();
+                succeeded = echoable.TryEcho();
+            if (!succeeded)
+            {
+                var message = _currentTarget is MemoryComposite combined
+                    ? combined.Echo != null ? combined.Echo.LastFailureFeedback : null
+                    : (_currentTarget as MemoryEchoable)?.LastFailureFeedback;
+                if (!string.IsNullOrWhiteSpace(message))
+                    ActionRejected?.Invoke(message);
+            }
         }
+
+        private void TryForgetCurrentTarget()
+        {
+            var succeeded = false;
+            if (_currentTarget is MemoryComposite composite)
+            {
+                succeeded = composite.TryForget();
+                if (!succeeded && composite.Forget == null)
+                    ActionRejected?.Invoke("This memory cannot be released.");
+            }
+            else if (_currentTarget is IMemoryForgetActionTarget forgetTarget)
+                succeeded = forgetTarget.TryForget();
+            else if (_currentTarget != null)
+                ActionRejected?.Invoke("This memory cannot be released.");
+
+            if (!succeeded && _currentTarget is IMemoryForgetActionTarget rejectedTarget &&
+                !string.IsNullOrWhiteSpace(rejectedTarget.LastFailureFeedback))
+                ActionRejected?.Invoke(rejectedTarget.LastFailureFeedback);
+        }
+
+        private static IMemoryRecallable GetRecallable(IMemoryLightTarget target) => target is MemoryComposite composite
+            ? composite.Recall
+            : target as IMemoryRecallable;
+
+        private static MemoryForgettable GetForgettable(IMemoryLightTarget target) => target is MemoryComposite composite
+            ? composite.Forget
+            : target as MemoryForgettable;
 
         private void BindPrimaryAbility()
         {
@@ -137,6 +185,8 @@ namespace LightRemembers.Memory
             inputReader.PrimaryAbilityPressed += TryRecallCurrentTarget;
             inputReader.SecondaryAbilityPressed -= TryEchoCurrentTarget;
             inputReader.SecondaryAbilityPressed += TryEchoCurrentTarget;
+            inputReader.ForgetPressed -= TryForgetCurrentTarget;
+            inputReader.ForgetPressed += TryForgetCurrentTarget;
         }
 
         private void SetTarget(IMemoryLightTarget target)

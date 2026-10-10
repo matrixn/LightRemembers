@@ -15,6 +15,7 @@ namespace LightRemembers.Memory
         [SerializeField] private GameObject pathPreview;
         [SerializeField] private EchoRideSurface rideSurface;
         [SerializeField] private MemoryRecallable recallRequirement;
+        [SerializeField] private MemoryForgettable[] forgottenBlockers;
         [SerializeField] private Renderer[] movingRenderers;
         [SerializeField, ColorUsage(false, true)] private Color idleEmission = Color.black;
         [SerializeField, ColorUsage(false, true)] private Color echoEmission = new Color(0.35f, 1.2f, 1.6f, 1f);
@@ -33,6 +34,7 @@ namespace LightRemembers.Memory
         public EchoRideSurface RideSurface => rideSurface;
         public MemoryRecallable RecallRequirement => recallRequirement;
         public bool RequiresRecall => recallRequirement != null;
+        public MemoryForgettable[] ForgottenBlockers => forgottenBlockers;
         public string LastFailureFeedback { get; private set; }
         public event Action EchoCompleted;
 
@@ -79,6 +81,22 @@ namespace LightRemembers.Memory
 
         public bool TryEcho()
         {
+            LastFailureFeedback = null;
+            if (forgottenBlockers != null)
+            {
+                foreach (var blocker in forgottenBlockers)
+                {
+                    if (blocker == null)
+                        continue;
+                    if (blocker != null && blocker.State == ForgetState.Forgotten)
+                        continue;
+                    LastFailureFeedback = "Something still holds the movement in place.";
+                    _rejectionPulseRemaining = 0.45f;
+                    SetEmission(echoEmission * 1.5f);
+                    return false;
+                }
+            }
+
             if (recallRequirement != null && recallRequirement.State != RecallState.Recalled)
             {
                 LastFailureFeedback = "The movement is there... but the shape is gone.";
@@ -100,6 +118,8 @@ namespace LightRemembers.Memory
         }
 
         public void ConfigureRecallRequirement(MemoryRecallable requirement) => recallRequirement = requirement;
+
+        public void ConfigureForgottenBlockers(params MemoryForgettable[] blockers) => forgottenBlockers = blockers;
 
         public void ResetToStart()
         {

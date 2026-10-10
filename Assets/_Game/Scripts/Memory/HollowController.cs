@@ -5,7 +5,7 @@ namespace LightRemembers.Memory
 {
     [DisallowMultipleComponent]
     [RequireComponent(typeof(CharacterController))]
-    public sealed class HollowController : MonoBehaviour, IMemoryLightTarget, IMemoryThreat
+    public sealed class HollowController : MonoBehaviour, IMemoryLightTarget, IMemoryThreat, IMemoryForgetActionTarget
     {
         private const float AttackWindupSeconds = 0.72f;
         private const float AttackCooldownSeconds = 2.5f;
@@ -31,6 +31,8 @@ namespace LightRemembers.Memory
         [SerializeField, Min(0f)] private float approachSpeed = 1.45f;
         [SerializeField, Min(0f)] private float repelSpeed = 1.8f;
         [SerializeField, Min(0f)] private float repelExposureSeconds = 2.5f;
+        [SerializeField, Min(0.1f)] private float forgetPreparationSeconds = 1.2f;
+        [SerializeField, Min(0.1f)] private float perceptionForgetDuration = 4f;
         [SerializeField, Min(0f)] private float observationDuration = 2.1f;
         [SerializeField, Min(0f)] private float gravity = 18f;
         [SerializeField] private Color voidEmission = new Color(0.12f, 0.035f, 0.2f, 1f);
@@ -41,9 +43,12 @@ namespace LightRemembers.Memory
         private HollowState _stateBeforeExposure;
         private float _verticalSpeed;
         private float _exposureSeconds;
+        private float _continuousLightExposure;
         private float _attackWindupRemaining;
         private float _nextAttackTime;
         private float _stateTimer;
+        private float _perceptionForgetRemaining;
+        private Vector3 _lastKnownPlayerPosition;
         private bool _woken;
         private bool _narrativeSuppressed;
         private bool _isRevealed;
@@ -55,6 +60,10 @@ namespace LightRemembers.Memory
         public bool HasRelocatedOffscreen => _hasRelocated;
         public float RepelExposureSeconds => MemoryAbilityState.SteadyLightUnlocked ? 1.8f : repelExposureSeconds;
         public float AttackCooldownRemaining => Mathf.Max(0f, _nextAttackTime - Time.time);
+        public float ContinuousLightExposure => _continuousLightExposure;
+        public float PerceptionForgetRemaining => _perceptionForgetRemaining;
+        public bool HasPerceptionForgetConfiguration => player != null && playerMemoryLight != null && bodyCollider != null;
+        public string LastFailureFeedback { get; private set; }
 
         public void Configure(Transform target, Camera targetCamera, PlayerMemoryLight memoryLight,
             MemoryCorruptionController targetCorruption, SanctuaryLight safeLight, Transform returnPoint,
@@ -105,18 +114,25 @@ namespace LightRemembers.Memory
         {
             if (illuminated)
             {
+                _continuousLightExposure += Mathf.Max(0f, deltaTime);
                 if (_exposureSeconds <= 0f)
                     _stateBeforeExposure = _state;
                 _exposureSeconds = Mathf.Min(RepelExposureSeconds, _exposureSeconds + Mathf.Max(0f, deltaTime));
                 _attackWindupRemaining = 0f;
                 if (_exposureSeconds >= RepelExposureSeconds)
                     SetState(HollowState.Repelled);
+                else if (_state == HollowState.Search)
+                {
+                    ApplyVoidVisual(true);
+                    return;
+                }
                 else if (_exposureSeconds >= UnstableExposureSeconds)
                     SetState(HollowState.Unstable);
                 ApplyVoidVisual(_exposureSeconds >= UnstableExposureSeconds);
                 return;
             }
 
+            _continuousLightExposure = 0f;
             if (_exposureSeconds > 0f)
             {
                 _exposureSeconds = Mathf.Max(0f, _exposureSeconds - deltaTime * 0.55f);
@@ -127,6 +143,32 @@ namespace LightRemembers.Memory
                 if (_state == HollowState.Repelled)
                     SetState(HollowState.Return);
             }
+        }
+
+        public bool TryForget()
+        {
+            LastFailureFeedback = null;
+            if (!MemoryAbilityState.ForgetAvailable || !_isRevealed ||
+                _continuousLightExposure < forgetPreparationSeconds ||
+                _state == HollowState.Dormant || _state == HollowState.Repelled || _state == HollowState.Return)
+            {
+                LastFailureFeedback = _continuousLightExposure < forgetPreparationSeconds
+                    ? "Hold the light steady; it hasn't forgotten you yet."
+                    : "This memory won't let go yet.";
+                return false;
+            }
+
+            _lastKnownPlayerPosition = player != null ? player.position : transform.position;
+            _perceptionForgetRemaining = perceptionForgetDuration;
+            _attackWindupRemaining = 0f;
+            SetState(HollowState.Search);
+            return true;
+        }
+
+        public void ConfigurePerceptionForget(float preparationSeconds, float durationSeconds)
+        {
+            forgetPreparationSeconds = Mathf.Max(0.1f, preparationSeconds);
+            perceptionForgetDuration = Mathf.Max(0.1f, durationSeconds);
         }
 
         public bool CanEnter(Vector3 worldPosition) => sanctuaryLight == null || sanctuaryLight.CanEnter(worldPosition);
@@ -187,6 +229,12 @@ namespace LightRemembers.Memory
                 return;
             }
 
+            if (_state == HollowState.Search)
+            {
+                UpdateSearch(deltaTime);
+                return;
+            }
+
             if (!_hasRelocated && (_state == HollowState.Observe || _state == HollowState.Stalk) &&
                 !IsVisibleFromPlayer(transform.position) && TryRelocateOffscreen())
             {
@@ -227,7 +275,29 @@ namespace LightRemembers.Memory
                 case HollowState.Return:
                     UpdateReturn(deltaTime);
                     break;
+                case HollowState.Search:
+                    UpdateSearch(deltaTime);
+                    break;
             }
+        }
+
+        private void UpdateSearch(float deltaTime)
+        {
+            _perceptionForgetRemaining -= deltaTime;
+            var offset = new Vector3(Mathf.Sin(Time.time * 1.15f) * 1.6f, 0f,
+                Mathf.Cos(Time.time * 0.85f) * 1.2f);
+            var searchPoint = _perceptionForgetRemaining > 1.8f
+                ? _lastKnownPlayerPosition
+                : _lastKnownPlayerPosition + offset;
+            MoveToward(searchPoint, stalkSpeed * 0.72f, deltaTime);
+
+            if (_perceptionForgetRemaining > 0f || player == null)
+                return;
+
+            var playerDistance = Vector3.Distance(transform.position, player.position);
+            SetState(playerDistance <= detectionRange
+                ? playerDistance <= approachDistance ? HollowState.Approach : HollowState.Stalk
+                : HollowState.Observe);
         }
 
         private void UpdateObservation(float deltaTime)

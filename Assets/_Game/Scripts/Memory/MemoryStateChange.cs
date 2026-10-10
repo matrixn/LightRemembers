@@ -3,7 +3,8 @@ namespace LightRemembers.Memory
     public enum MemoryAbility
     {
         Recall,
-        Echo
+        Echo,
+        Forget
     }
 
     public readonly struct MemoryStateChange

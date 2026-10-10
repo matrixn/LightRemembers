@@ -7,17 +7,22 @@ namespace LightRemembers.Memory
     public static class MemoryAbilityState
     {
         private static bool _echoUnlocked;
+        private static bool _forgetUnlocked;
         private static bool _memoryAnchorUnlocked;
         private static bool _workshopShortcutUnlocked;
         private static bool _recallCorrupted;
         private static bool _echoCorrupted;
+        private static bool _forgetCorrupted;
         private static bool _steadyLightUnlocked;
 
         public static bool EchoUnlocked => _echoUnlocked;
+        public static bool ForgetUnlocked => _forgetUnlocked;
         public static bool RecallAvailable => !_recallCorrupted;
         public static bool EchoAvailable => _echoUnlocked && !_echoCorrupted;
+        public static bool ForgetAvailable => _forgetUnlocked && !_forgetCorrupted;
         public static bool RecallCorrupted => _recallCorrupted;
         public static bool EchoCorrupted => _echoCorrupted;
+        public static bool ForgetCorrupted => _forgetCorrupted;
         public static bool MemoryLightAvailable => true;
         public static bool SteadyLightUnlocked => _steadyLightUnlocked;
         public static float HollowRepelExposureSeconds => _steadyLightUnlocked ? 1.8f : 2.5f;
@@ -25,6 +30,7 @@ namespace LightRemembers.Memory
         public static bool WorkshopShortcutUnlocked => _workshopShortcutUnlocked;
         public static int RecallCapacity => _memoryAnchorUnlocked ? 2 : 1;
         public static event Action EchoUnlockedChanged;
+        public static event Action ForgetUnlockedChanged;
         public static event Action RecallCapacityChanged;
         public static event Action<MemoryStateChange> MemoryStateChanged;
         public static event Action SteadyLightUnlockedChanged;
@@ -47,6 +53,28 @@ namespace LightRemembers.Memory
             MemoryStateChanged?.Invoke(new MemoryStateChange(MemoryAbility.Echo, EchoAvailable));
         }
 
+        public static bool UnlockForget()
+        {
+            if (_forgetUnlocked)
+                return false;
+            _forgetUnlocked = true;
+            MemoryProgressionSave.SetForgetUnlocked(true);
+            ForgetUnlockedChanged?.Invoke();
+            MemoryStateChanged?.Invoke(new MemoryStateChange(MemoryAbility.Forget, ForgetAvailable));
+            return true;
+        }
+
+        public static void SetForgetUnlocked(bool unlocked, bool persist = false)
+        {
+            if (_forgetUnlocked == unlocked)
+                return;
+            _forgetUnlocked = unlocked;
+            if (persist)
+                MemoryProgressionSave.SetForgetUnlocked(unlocked);
+            ForgetUnlockedChanged?.Invoke();
+            MemoryStateChanged?.Invoke(new MemoryStateChange(MemoryAbility.Forget, ForgetAvailable));
+        }
+
         public static bool CorruptRecall()
         {
             if (_recallCorrupted)
@@ -65,6 +93,15 @@ namespace LightRemembers.Memory
             return true;
         }
 
+        public static bool CorruptForget()
+        {
+            if (_forgetCorrupted)
+                return false;
+            _forgetCorrupted = true;
+            MemoryStateChanged?.Invoke(new MemoryStateChange(MemoryAbility.Forget, false));
+            return true;
+        }
+
         public static bool RestoreMemory(MemoryAbility ability)
         {
             switch (ability)
@@ -79,6 +116,11 @@ namespace LightRemembers.Memory
                     _echoCorrupted = false;
                     MemoryStateChanged?.Invoke(new MemoryStateChange(ability, EchoAvailable));
                     return true;
+                case MemoryAbility.Forget:
+                    if (!_forgetCorrupted) return false;
+                    _forgetCorrupted = false;
+                    MemoryStateChanged?.Invoke(new MemoryStateChange(ability, ForgetAvailable));
+                    return true;
                 default:
                     return false;
             }
@@ -88,6 +130,7 @@ namespace LightRemembers.Memory
         {
             RestoreMemory(MemoryAbility.Recall);
             RestoreMemory(MemoryAbility.Echo);
+            RestoreMemory(MemoryAbility.Forget);
         }
 
         public static bool UnlockSteadyLight()
@@ -140,12 +183,15 @@ namespace LightRemembers.Memory
         private static void ResetForNewSession()
         {
             _echoUnlocked = false;
+            _forgetUnlocked = MemoryProgressionSave.IsForgetUnlocked;
             _memoryAnchorUnlocked = false;
             _workshopShortcutUnlocked = false;
             _recallCorrupted = false;
             _echoCorrupted = false;
+            _forgetCorrupted = false;
             _steadyLightUnlocked = false;
             EchoUnlockedChanged = null;
+            ForgetUnlockedChanged = null;
             RecallCapacityChanged = null;
             MemoryStateChanged = null;
             SteadyLightUnlockedChanged = null;

@@ -134,6 +134,11 @@ namespace LightRemembers.Memory
 
         public bool TryRecall()
         {
+            var forgettable = GetComponent<MemoryForgettable>();
+            if (forgettable != null && (forgettable.State == ForgetState.Forgotten ||
+                                        forgettable.State == ForgetState.Forgetting ||
+                                        forgettable.State == ForgetState.Restoring))
+                return false;
             if (_state != RecallState.Revealed || !MemoryAbilityState.RecallAvailable)
                 return false;
 

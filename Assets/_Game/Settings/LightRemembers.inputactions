@@ -13,6 +13,7 @@
                 { "name": "MemoryLight", "type": "Button", "id": "efef9cdf-4ec7-4d48-9d6b-8cbac4f8b106", "expectedControlType": "Button" },
                 { "name": "PrimaryAbility", "type": "Button", "id": "14fe0bb5-1e18-41e7-bd66-f420700aa107", "expectedControlType": "Button" },
                 { "name": "SecondaryAbility", "type": "Button", "id": "f1ed0835-b98b-4821-b6a7-0e4db30e8108", "expectedControlType": "Button" },
+                { "name": "Forget", "type": "Button", "id": "2713d071-42e2-4485-a96e-18eb2d8a0101", "expectedControlType": "Button" },
                 { "name": "Pause", "type": "Button", "id": "d5ad82e6-a5bb-4a09-ae4d-45d07aa2b109", "expectedControlType": "Button" }
             ],
             "bindings": [
@@ -36,6 +37,8 @@
                 { "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50118", "path": "<Gamepad>/rightTrigger", "groups": "Gamepad", "action": "PrimaryAbility" },
                 { "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50119", "path": "<Keyboard>/q", "groups": "Keyboard&Mouse", "action": "SecondaryAbility" },
                 { "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50120", "path": "<Gamepad>/rightShoulder", "groups": "Gamepad", "action": "SecondaryAbility" },
+                { "id": "2713d071-42e2-4485-a96e-18eb2d8a0102", "path": "<Keyboard>/f", "groups": "Keyboard&Mouse", "action": "Forget" },
+                { "id": "2713d071-42e2-4485-a96e-18eb2d8a0103", "path": "<Gamepad>/rightStickPress", "groups": "Gamepad", "action": "Forget" },
                 { "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50121", "path": "<Keyboard>/escape", "groups": "Keyboard&Mouse", "action": "Pause" },
                 { "id": "32cb0bdd-a7b0-4aa8-b6b0-02a0a8c50122", "path": "<Gamepad>/start", "groups": "Gamepad", "action": "Pause" }
             ]

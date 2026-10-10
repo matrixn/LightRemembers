@@ -10,6 +10,22 @@ namespace LightRemembers.Tests.PlayMode
 {
     public sealed class MemoryRecallablePlayModeTests
     {
+        private string _savedProgress;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _savedProgress = MemoryProgressionSave.CaptureRawSave();
+            MemoryProgressionSave.DeleteSave();
+        }
+
+        [UnityTearDown]
+        public IEnumerator TearDown()
+        {
+            MemoryProgressionSave.RestoreRawSave(_savedProgress);
+            yield return null;
+        }
+
         [UnityTest]
         public IEnumerator EchoTravelsReturnsAndCanBeReplayed()
         {

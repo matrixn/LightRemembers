@@ -353,6 +353,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: LightRemembers.Runtime::LightRemembers.Memory.MemoryAbilityBootstrap
   unlockEchoInDevelopment: 1
+  unlockForgetInDevelopment: 0
 --- !u!1 &34258402
 GameObject:
   m_ObjectHideFlags: 0
@@ -5434,6 +5435,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: LightRemembers.Runtime::LightRemembers.Memory.MemoryComposite
   recall: {fileID: 0}
   echo: {fileID: 619754852}
+  forget: {fileID: 0}
 --- !u!114 &619754852
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5451,6 +5453,7 @@ MonoBehaviour:
   pathPreview: {fileID: 1450797243}
   rideSurface: {fileID: 232214918}
   recallRequirement: {fileID: 0}
+  forgottenBlockers: []
   movingRenderers:
   - {fileID: 39610622}
   - {fileID: 420597355}
@@ -7734,6 +7737,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: LightRemembers.Runtime::LightRemembers.Memory.MemoryComposite
   recall: {fileID: 928197331}
   echo: {fileID: 928197330}
+  forget: {fileID: 0}
 --- !u!114 &928197330
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7751,6 +7755,7 @@ MonoBehaviour:
   pathPreview: {fileID: 1285884788}
   rideSurface: {fileID: 1962414076}
   recallRequirement: {fileID: 928197331}
+  forgottenBlockers: []
   movingRenderers:
   - {fileID: 2042392195}
   idleEmission: {r: 0, g: 0, b: 0, a: 1}
@@ -9878,6 +9883,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: LightRemembers.Runtime::LightRemembers.Memory.MemoryComposite
   recall: {fileID: 1116155509}
   echo: {fileID: 1116155508}
+  forget: {fileID: 0}
 --- !u!114 &1116155508
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9895,6 +9901,7 @@ MonoBehaviour:
   pathPreview: {fileID: 449043397}
   rideSurface: {fileID: 1052686857}
   recallRequirement: {fileID: 1116155509}
+  forgottenBlockers: []
   movingRenderers:
   - {fileID: 1846134119}
   - {fileID: 1515353639}
@@ -13977,6 +13984,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: LightRemembers.Runtime::LightRemembers.Memory.MemoryComposite
   recall: {fileID: 1574382893}
   echo: {fileID: 1574382892}
+  forget: {fileID: 0}
 --- !u!114 &1574382892
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13994,6 +14002,7 @@ MonoBehaviour:
   pathPreview: {fileID: 2057628358}
   rideSurface: {fileID: 1210472180}
   recallRequirement: {fileID: 1574382893}
+  forgottenBlockers: []
   movingRenderers:
   - {fileID: 1759084730}
   idleEmission: {r: 0, g: 0, b: 0, a: 1}
