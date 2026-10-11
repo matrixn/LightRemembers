@@ -27,6 +27,8 @@ namespace LightRemembers.Player
         public bool MemoryLightHeld => _memoryLightAction != null && _memoryLightAction.IsPressed();
 
         public event Action JumpPressed;
+        public event Action MemoryLightPressed;
+        public event Action MemoryLightReleased;
         public event Action InteractPressed;
         public event Action PrimaryAbilityPressed;
         public event Action SecondaryAbilityPressed;
@@ -60,6 +62,8 @@ namespace LightRemembers.Player
             _lookAction.performed += OnLook;
             _lookAction.canceled += OnLook;
             _jumpAction.performed += OnJump;
+            _memoryLightAction.started += OnMemoryLightStarted;
+            _memoryLightAction.canceled += OnMemoryLightCanceled;
             _interactAction.performed += OnInteract;
             _primaryAbilityAction.performed += OnPrimaryAbility;
             _secondaryAbilityAction.performed += OnSecondaryAbility;
@@ -73,6 +77,8 @@ namespace LightRemembers.Player
                 return;
 
             _secondaryAbilityAction.performed -= OnSecondaryAbility;
+            _memoryLightAction.started -= OnMemoryLightStarted;
+            _memoryLightAction.canceled -= OnMemoryLightCanceled;
             _forgetAction.performed -= OnForget;
             _playerMap.Disable();
             _playerMap.Dispose();
@@ -99,6 +105,8 @@ namespace LightRemembers.Player
         }
 
         private void OnJump(InputAction.CallbackContext context) => JumpPressed?.Invoke();
+        private void OnMemoryLightStarted(InputAction.CallbackContext context) => MemoryLightPressed?.Invoke();
+        private void OnMemoryLightCanceled(InputAction.CallbackContext context) => MemoryLightReleased?.Invoke();
         private void OnInteract(InputAction.CallbackContext context) => InteractPressed?.Invoke();
         private void OnPrimaryAbility(InputAction.CallbackContext context) => PrimaryAbilityPressed?.Invoke();
         private void OnSecondaryAbility(InputAction.CallbackContext context) => SecondaryAbilityPressed?.Invoke();

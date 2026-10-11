@@ -15,6 +15,7 @@ namespace LightRemembers.Memory
         [SerializeField] private Transform aimTransform;
         [SerializeField] private Light focusedLight;
         [SerializeField] private ParticleSystem beamParticles;
+        [SerializeField] private MemoryLightBeamVisual beamVisual;
         [SerializeField, Min(0f)] private float maximumRange = 12f;
         [SerializeField] private LayerMask targetLayers = ~0;
 
@@ -27,7 +28,16 @@ namespace LightRemembers.Memory
         public IMemoryRecallable CurrentRecallableTarget => _currentTarget is MemoryComposite composite
             ? composite.Recall
             : _currentTarget as IMemoryRecallable;
-        public float MaximumRange { get => maximumRange; set => maximumRange = Mathf.Max(0f, value); }
+        public float MaximumRange
+        {
+            get => maximumRange;
+            set
+            {
+                maximumRange = Mathf.Max(0f, value);
+                if (beamVisual != null)
+                    beamVisual.Configure(lightOrigin, maximumRange, focusedLight != null ? focusedLight.spotAngle : 28f);
+            }
+        }
         public event Action<string> ActionRejected;
 
         public void Configure(PlayerInputReader reader, Transform origin, Transform aim, Light beam)
@@ -42,6 +52,9 @@ namespace LightRemembers.Memory
             lightOrigin = origin;
             aimTransform = aim;
             focusedLight = beam;
+            if (beamVisual == null)
+                beamVisual = GetComponent<MemoryLightBeamVisual>() ?? gameObject.AddComponent<MemoryLightBeamVisual>();
+            beamVisual.Configure(lightOrigin, maximumRange, focusedLight != null ? focusedLight.spotAngle : 28f);
             if (beamParticles == null && origin != null)
                 beamParticles = origin.GetComponentInChildren<ParticleSystem>(true);
             BindPrimaryAbility();
@@ -53,6 +66,9 @@ namespace LightRemembers.Memory
                 aimTransform = Camera.main.transform;
             if (focusedLight != null)
                 focusedLight.enabled = false;
+            if (beamVisual == null)
+                beamVisual = GetComponent<MemoryLightBeamVisual>() ?? gameObject.AddComponent<MemoryLightBeamVisual>();
+            beamVisual.Configure(lightOrigin, maximumRange, focusedLight != null ? focusedLight.spotAngle : 28f);
             if (beamParticles == null && lightOrigin != null)
                 beamParticles = lightOrigin.GetComponentInChildren<ParticleSystem>(true);
             if (beamParticles != null)
@@ -69,6 +85,8 @@ namespace LightRemembers.Memory
             if (inputReader == null || lightOrigin == null || aimTransform == null)
             {
                 SetTarget(null);
+                if (beamVisual != null)
+                    beamVisual.SetBeamState(false, 0f, Vector3.zero, Vector3.up, false);
                 return;
             }
 
@@ -83,6 +101,8 @@ namespace LightRemembers.Memory
             if (!active)
             {
                 SetTarget(null);
+                if (beamVisual != null)
+                    beamVisual.SetBeamState(false, 0f, Vector3.zero, Vector3.up, false);
                 return;
             }
 
@@ -95,16 +115,29 @@ namespace LightRemembers.Memory
             var nearestDistance = float.PositiveInfinity;
             var nearestCollider = (Collider)null;
             var nearestPoint = origin + direction * maximumRange;
+            var nearestNormal = -direction;
             for (var i = 0; i < count; i++)
             {
+                var hitTransform = _hits[i].collider.transform;
+                if (hitTransform == transform || hitTransform.IsChildOf(transform))
+                    continue;
                 if (_hits[i].distance >= nearestDistance)
                     continue;
                 nearestDistance = _hits[i].distance;
                 nearestCollider = _hits[i].collider;
                 nearestPoint = _hits[i].point;
+                nearestNormal = _hits[i].normal;
             }
 
             _lastHitPoint = nearestPoint;
+            if (beamVisual != null)
+                beamVisual.SetBeamState(true, nearestCollider != null ? nearestDistance : maximumRange,
+                    nearestPoint, nearestNormal, nearestCollider != null);
+            if (beamParticles != null)
+            {
+                var shape = beamParticles.shape;
+                shape.length = beamVisual != null ? beamVisual.BeamLength : maximumRange;
+            }
             if (nearestCollider == null)
             {
                 SetTarget(null);
@@ -127,6 +160,8 @@ namespace LightRemembers.Memory
                 inputReader.ForgetPressed -= TryForgetCurrentTarget;
             }
             SetTarget(null);
+            if (beamVisual != null)
+                beamVisual.SetBeamState(false, 0f, Vector3.zero, Vector3.up, false);
             if (beamParticles != null)
                 beamParticles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         }

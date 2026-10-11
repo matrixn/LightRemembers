@@ -32,10 +32,13 @@ namespace LightRemembers.Editor
         private const string CharacterControllerPath = "Assets/_Game/Art/Animation/LighthousePlayer.controller";
         private const string HouseGableMeshPath = "Assets/_Game/Art/Showcase/LR_HouseGable.asset";
         private const string MemoryParticleMaterialPath = "Assets/_Game/Art/Materials/LR_MemoryLightParticles.mat";
+        private const string MemoryMoteTexturePath = "Assets/_Game/Art/Textures/LR_MemoryMote.asset";
+        private const string MeadowMaterialFolder = "Assets/_Game/Art/Materials/Meadow";
 
         [MenuItem("Light Remembers/Showcase/Build Lighthouse Journey")]
         public static void Build()
         {
+            ConfigureAnimationClipLoops();
             var neutral = CreateSceneMaterial("LR_Showcase_Stone", new Color(0.36f, 0.4f, 0.44f),
                 new Color(0.025f, 0.035f, 0.045f));
             var ruins = LoadMaterial("Assets/_Game/Art/Materials/PrototypeBridgeRuins.mat");
@@ -92,10 +95,16 @@ namespace LightRemembers.Editor
             deoccluder.CollideAgainst = groundLayer >= 0 ? ~(1 << groundLayer) : ~0;
             movement.Configure(player.GetComponent<CharacterController>(), reader, camera.transform);
             ConfigurePlayerCharacter(player, reader);
+            BindMeadowToPlayer(player);
             var lightOrigin = player.transform.Find("MemoryLightOrigin");
+            PrepareMemoryLightHand(player, reader, lightOrigin);
             var memoryLight = player.GetComponent<PlayerMemoryLight>();
             ConfigureMemoryLightBeam(lightOrigin);
             memoryLight.Configure(reader, lightOrigin, camera.transform, lightOrigin.GetComponent<Light>());
+            var memoryMotes = lightOrigin.Find("MemoryLight_Motes");
+            if (memoryMotes != null)
+                ConfigureMemoryMotes(memoryMotes.GetComponent<ParticleSystem>(),
+                    player.GetComponent<MemoryLightBeamVisual>());
             memoryLight.MaximumRange = 19f;
             PrefabUtility.RecordPrefabInstancePropertyModifications(memoryLight);
             EditorUtility.SetDirty(memoryLight);
@@ -182,6 +191,45 @@ namespace LightRemembers.Editor
             Debug.Log("Lighthouse Journey built as the standalone opening level. Only this scene is open to prevent duplicate players.");
         }
 
+        [MenuItem("Light Remembers/Showcase/Refresh Memory Light Visuals")]
+        public static void RefreshMemoryLightVisuals()
+        {
+            var scene = EditorSceneManager.GetActiveScene();
+            if (scene.path != ScenePath)
+                scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+
+            var player = GameObject.Find("PlayerPrototype");
+            var origin = player != null ? player.transform.Find("MemoryLightOrigin") : null;
+            if (player == null || origin == null)
+                throw new InvalidOperationException("PlayerPrototype and its MemoryLightOrigin must exist in LighthouseJourney.");
+
+            player.transform.rotation = Quaternion.identity;
+            var visualRoot = player.transform.Find("PlayerCharacterVisual");
+            if (visualRoot != null)
+                visualRoot.localRotation = Quaternion.Euler(0f, 180f, 0f);
+
+            var reader = player.GetComponent<PlayerInputReader>();
+            PrepareMemoryLightHand(player, reader, origin);
+
+            var visual = player.GetComponent<MemoryLightBeamVisual>() ?? player.AddComponent<MemoryLightBeamVisual>();
+            visual.Configure(origin, 19f, 28f);
+            PrefabUtility.RecordPrefabInstancePropertyModifications(visual);
+
+            var motes = origin.Find("MemoryLight_Motes");
+            if (motes != null)
+            {
+                var system = motes.GetComponent<ParticleSystem>();
+                ConfigureMemoryMotes(system, visual);
+                var renderer = motes.GetComponent<ParticleSystemRenderer>();
+                renderer.sharedMaterial = LoadOrCreateMemoryParticleMaterial();
+            }
+
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, ScenePath);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+        }
+
         [MenuItem("Light Remembers/Showcase/Refresh Lighthouse Vegetation")]
         public static void RefreshLandscapeVegetation()
         {
@@ -205,9 +253,63 @@ namespace LightRemembers.Editor
                 new GroundPatch("LighthouseApproach", new Vector3(0f, 0f, 147f), new Vector3(20f, 0f, 23f))
             };
             ScatterGroundPlants(ground.transform, land);
+            BuildGroundCover(ground.transform, land);
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ScenePath);
             AssetDatabase.SaveAssets();
+        }
+
+        private static void PrepareMemoryLightHand(GameObject player, PlayerInputReader reader, Transform origin)
+        {
+            if (player == null || origin == null) return;
+            var modelRoot = player.transform.Find("PlayerCharacterVisual") ?? player.transform;
+            var hand = FindDescendant(modelRoot, "hand_r");
+            if (hand == null)
+                throw new InvalidOperationException("The showcase character is missing its right hand bone.");
+            origin.position = hand.position;
+
+            var armPose = player.GetComponent<MemoryLightArmPose>() ?? player.AddComponent<MemoryLightArmPose>();
+            armPose.Configure(reader, modelRoot, origin);
+            var palmGlow = origin.Find("MemoryLight_PalmGlow");
+            if (palmGlow == null)
+            {
+                var glow = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                glow.name = "MemoryLight_PalmGlow";
+                glow.transform.SetParent(origin, false);
+                glow.transform.localPosition = Vector3.zero;
+                glow.transform.localScale = Vector3.one * 0.055f;
+                var collider = glow.GetComponent<Collider>();
+                if (collider != null) UnityEngine.Object.DestroyImmediate(collider);
+                glow.GetComponent<Renderer>().sharedMaterial = LoadOrCreatePalmMaterial();
+                palmGlow = glow.transform;
+            }
+
+            var palmRenderer = palmGlow.GetComponent<Renderer>();
+            var palmLightObject = palmGlow.Find("PalmLight");
+            if (palmLightObject == null)
+            {
+                var lightObject = new GameObject("PalmLight", typeof(Light));
+                lightObject.transform.SetParent(palmGlow, false);
+                var light = lightObject.GetComponent<Light>();
+                light.type = LightType.Point;
+                light.color = new Color(0.42f, 0.8f, 1f);
+                light.intensity = 0.45f;
+                light.range = 1.2f;
+                light.shadows = LightShadows.None;
+            }
+            var feedback = player.GetComponent<MemoryLightPalmFeedback>() ?? player.AddComponent<MemoryLightPalmFeedback>();
+            feedback.Configure(reader, palmRenderer, palmGlow.GetComponentInChildren<Light>(true));
+            palmRenderer.enabled = false;
+            var palmLight = palmGlow.GetComponentInChildren<Light>(true);
+            if (palmLight != null) palmLight.enabled = false;
+        }
+
+        private static void BindMeadowToPlayer(GameObject player)
+        {
+            var cover = GameObject.Find("MeadowGroundCover")?.GetComponent<MeadowGroundCover>();
+            if (cover != null && player != null)
+                cover.BindPlayer(player.transform, player.GetComponent<PlayerInputReader>(),
+                    player.GetComponent<CharacterController>());
         }
 
         private static void ConfigurePlayerCharacter(GameObject player, PlayerInputReader reader)
@@ -228,6 +330,7 @@ namespace LightRemembers.Editor
             model.transform.SetParent(visualRoot, false);
             model.transform.localPosition = Vector3.zero;
             model.transform.localRotation = Quaternion.identity;
+            visualRoot.localRotation = Quaternion.Euler(0f, 180f, 0f);
 
             var bounds = new Bounds(player.transform.position, Vector3.zero);
             var hasBounds = false;
@@ -296,12 +399,12 @@ namespace LightRemembers.Editor
         private static RuntimeAnimatorController CreateCharacterAnimatorController()
         {
             var existing = AssetDatabase.LoadAssetAtPath<AnimatorController>(CharacterControllerPath);
-            if (existing != null) return existing;
             const string folder = "Assets/_Game/Art/Animation";
             if (!AssetDatabase.IsValidFolder(folder)) AssetDatabase.CreateFolder("Assets/_Game/Art", "Animation");
-            var controller = AnimatorController.CreateAnimatorControllerAtPath(CharacterControllerPath);
-            controller.AddParameter("MoveSpeed", AnimatorControllerParameterType.Float);
-            controller.AddParameter("Grounded", AnimatorControllerParameterType.Bool);
+            var controller = existing ?? AnimatorController.CreateAnimatorControllerAtPath(CharacterControllerPath);
+            EnsureAnimatorParameter(controller, "MoveSpeed", AnimatorControllerParameterType.Float);
+            EnsureAnimatorParameter(controller, "Grounded", AnimatorControllerParameterType.Bool);
+            EnsureAnimatorParameter(controller, "Jump", AnimatorControllerParameterType.Trigger);
 
             var importedClips = AssetDatabase.LoadAllAssetsAtPath(AnimationPath);
             AnimationClip FindClip(string suffix)
@@ -317,6 +420,7 @@ namespace LightRemembers.Editor
             var sprint = FindClip("Sprint_Loop");
             var jumpStart = FindClip("Jump_Start");
             var jumpLoop = FindClip("Jump_Loop");
+            var jumpLand = FindClip("Jump_Land");
             if (idle == null || walk == null || jog == null || sprint == null || jumpStart == null || jumpLoop == null)
             {
                 Debug.LogWarning("Universal Animation Library is missing expected idle, walk, jog, sprint or jump clips.");
@@ -324,6 +428,14 @@ namespace LightRemembers.Editor
             }
 
             var stateMachine = controller.layers[0].stateMachine;
+            foreach (var transition in stateMachine.anyStateTransitions)
+                stateMachine.RemoveAnyStateTransition(transition);
+            foreach (var state in stateMachine.states)
+                stateMachine.RemoveState(state.state);
+            foreach (var subAsset in AssetDatabase.LoadAllAssetsAtPath(CharacterControllerPath))
+                if (subAsset is BlendTree oldTree)
+                    AssetDatabase.RemoveObjectFromAsset(oldTree);
+
             var blendTree = new BlendTree
             {
                 name = "ShowcaseLocomotion",
@@ -343,20 +455,77 @@ namespace LightRemembers.Editor
             takeoff.motion = jumpStart;
             var airborne = stateMachine.AddState("JumpLoop", new Vector3(820f, 40f));
             airborne.motion = jumpLoop;
+            var landing = jumpLand != null ? stateMachine.AddState("JumpLand", new Vector3(1080f, 40f)) : locomotion;
+            if (jumpLand != null)
+                landing.motion = jumpLand;
             var enterJump = stateMachine.AddAnyStateTransition(takeoff);
             enterJump.hasExitTime = false;
             enterJump.duration = 0.08f;
-            enterJump.AddCondition(AnimatorConditionMode.IfNot, 0f, "Grounded");
+            enterJump.canTransitionToSelf = false;
+            enterJump.AddCondition(AnimatorConditionMode.If, 0f, "Jump");
             var enterLoop = takeoff.AddTransition(airborne);
             enterLoop.hasExitTime = true;
-            enterLoop.exitTime = 0.78f;
+            enterLoop.exitTime = 0.82f;
             enterLoop.duration = 0.08f;
-            var land = airborne.AddTransition(locomotion);
+            enterLoop.AddCondition(AnimatorConditionMode.IfNot, 0f, "Grounded");
+            var earlyLand = takeoff.AddTransition(landing);
+            earlyLand.hasExitTime = false;
+            earlyLand.duration = 0.1f;
+            earlyLand.AddCondition(AnimatorConditionMode.If, 0f, "Grounded");
+            var land = airborne.AddTransition(landing);
             land.hasExitTime = false;
             land.duration = 0.12f;
             land.AddCondition(AnimatorConditionMode.If, 0f, "Grounded");
+            if (jumpLand != null)
+            {
+                var finishLanding = landing.AddTransition(locomotion);
+                finishLanding.hasExitTime = true;
+                finishLanding.exitTime = 0.88f;
+                finishLanding.duration = 0.12f;
+            }
             EditorUtility.SetDirty(controller);
             return controller;
+        }
+
+        private static void EnsureAnimatorParameter(AnimatorController controller, string parameterName,
+            AnimatorControllerParameterType parameterType)
+        {
+            foreach (var parameter in controller.parameters)
+                if (parameter.name == parameterName)
+                    return;
+            controller.AddParameter(parameterName, parameterType);
+        }
+
+        private static void ConfigureAnimationClipLoops()
+        {
+            var importer = AssetImporter.GetAtPath(AnimationPath) as ModelImporter;
+            if (importer == null)
+                return;
+
+            var clips = importer.clipAnimations;
+            if (clips == null || clips.Length == 0)
+                clips = importer.defaultClipAnimations;
+
+            var changed = false;
+            foreach (var clip in clips)
+            {
+                var isLoop = clip.name.EndsWith("Idle_Loop", StringComparison.Ordinal) ||
+                             clip.name.EndsWith("Walk_Loop", StringComparison.Ordinal) ||
+                             clip.name.EndsWith("Jog_Fwd_Loop", StringComparison.Ordinal) ||
+                             clip.name.EndsWith("Sprint_Loop", StringComparison.Ordinal) ||
+                             clip.name.EndsWith("Jump_Loop", StringComparison.Ordinal);
+                if (clip.loopTime == isLoop && (!isLoop || clip.loopPose))
+                    continue;
+                clip.loopTime = isLoop;
+                if (isLoop)
+                    clip.loopPose = true;
+                changed = true;
+            }
+
+            if (!changed)
+                return;
+            importer.clipAnimations = clips;
+            importer.SaveAndReimport();
         }
 
         private static void ConfigureMemoryLightBeam(Transform origin)
@@ -372,30 +541,7 @@ namespace LightRemembers.Editor
             var particles = new GameObject("MemoryLight_Motes", typeof(ParticleSystem), typeof(ParticleSystemRenderer));
             particles.transform.SetParent(origin, false);
             var system = particles.GetComponent<ParticleSystem>();
-            var main = system.main;
-            main.loop = true;
-            main.playOnAwake = false;
-            main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.startLifetime = new ParticleSystem.MinMaxCurve(0.55f, 0.95f);
-            main.startSpeed = new ParticleSystem.MinMaxCurve(7f, 11f);
-            main.startSize = new ParticleSystem.MinMaxCurve(0.025f, 0.065f);
-            main.startColor = new Color(0.62f, 0.9f, 1f, 0.88f);
-            main.maxParticles = 180;
-            var emission = system.emission;
-            emission.rateOverTime = 48f;
-            var shape = system.shape;
-            shape.enabled = true;
-            shape.shapeType = ParticleSystemShapeType.Cone;
-            shape.angle = 7f;
-            shape.radius = 0.08f;
-            shape.length = 0.4f;
-            var color = system.colorOverLifetime;
-            color.enabled = true;
-            var gradient = new Gradient();
-            gradient.SetKeys(
-                new[] { new GradientColorKey(new Color(0.65f, 0.9f, 1f), 0f), new GradientColorKey(new Color(0.3f, 0.65f, 1f), 1f) },
-                new[] { new GradientAlphaKey(0.05f, 0f), new GradientAlphaKey(0.8f, 0.16f), new GradientAlphaKey(0f, 1f) });
-            color.color = gradient;
+            ConfigureMemoryMotes(system, null);
             var particleRenderer = particles.GetComponent<ParticleSystemRenderer>();
             particleRenderer.renderMode = ParticleSystemRenderMode.Billboard;
             particleRenderer.sharedMaterial = LoadOrCreateMemoryParticleMaterial();
@@ -407,18 +553,60 @@ namespace LightRemembers.Editor
         private static Material LoadOrCreateMemoryParticleMaterial()
         {
             var existing = AssetDatabase.LoadAssetAtPath<Material>(MemoryParticleMaterialPath);
-            if (existing != null)
-                return existing;
-
             var shader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
             if (shader == null)
                 throw new InvalidOperationException("URP particle unlit shader is unavailable for the Memory Light motes.");
 
+            var texture = LoadOrCreateMemoryMoteTexture();
+            if (existing != null)
+            {
+                if (existing.HasProperty("_BaseMap")) existing.SetTexture("_BaseMap", texture);
+                else existing.mainTexture = texture;
+                EditorUtility.SetDirty(existing);
+                return existing;
+            }
+
             var material = new Material(shader) { name = "LR_MemoryLightParticles" };
             if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", Color.white);
             if (material.HasProperty("_Color")) material.SetColor("_Color", Color.white);
+            if (material.HasProperty("_BaseMap")) material.SetTexture("_BaseMap", texture);
+            else material.mainTexture = texture;
             AssetDatabase.CreateAsset(material, MemoryParticleMaterialPath);
             return material;
+        }
+
+        private static Texture2D LoadOrCreateMemoryMoteTexture()
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<Texture2D>(MemoryMoteTexturePath);
+            if (existing != null)
+                return existing;
+
+            const string textureFolder = "Assets/_Game/Art/Textures";
+            if (!AssetDatabase.IsValidFolder(textureFolder))
+                AssetDatabase.CreateFolder("Assets/_Game/Art", "Textures");
+
+            const int size = 32;
+            var pixels = new Color[size * size];
+            for (var y = 0; y < size; y++)
+            for (var x = 0; x < size; x++)
+            {
+                var dx = (x + 0.5f - size * 0.5f) / (size * 0.5f);
+                var dy = (y + 0.5f - size * 0.5f) / (size * 0.5f);
+                var radius = Mathf.Sqrt(dx * dx + dy * dy);
+                var alpha = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((1f - radius) / 0.48f)) * 0.72f;
+                pixels[y * size + x] = new Color(1f, 1f, 1f, alpha);
+            }
+
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false, true)
+            {
+                name = "LR_MemoryMote",
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp
+            };
+            texture.SetPixels(pixels);
+            texture.Apply(false, true);
+            AssetDatabase.CreateAsset(texture, MemoryMoteTexturePath);
+            return texture;
         }
 
         private static void BuildLandscape(Transform parent, Material neutral, Material ruins, Material gold,
@@ -465,6 +653,7 @@ namespace LightRemembers.Editor
             CreatePathSign(ground, "THE QUIET WOOD", new Vector3(0f, 1.3f, 82.5f), gold);
             CreatePathSign(ground, "THE FORGOTTEN ARCHIVE", new Vector3(0f, 1.3f, 111.5f), gold);
             ScatterGroundPlants(ground, land);
+            BuildGroundCover(ground, land);
             SetLayerRecursively(ground.gameObject, LayerMask.NameToLayer("Ignore Raycast"));
         }
 
@@ -516,9 +705,9 @@ namespace LightRemembers.Editor
                         continue;
 
                     var path = smallPlants[random.Next(smallPlants.Length)];
-                    var size = path.Contains("Fern_") ? RandomRange(random, 0.22f, 0.3f)
-                        : path.Contains("Bush_") ? RandomRange(random, 0.58f, 0.82f)
-                        : RandomRange(random, 0.62f, 1.15f);
+                    var size = path.Contains("Fern_") ? RandomRange(random, 0.1f, 0.16f)
+                        : path.Contains("Bush_") ? RandomRange(random, 0.24f, 0.4f)
+                        : RandomRange(random, 0.13f, 0.24f);
                     var plant = SpawnModel(forest, path, new Vector3(x, 0.025f, z),
                         Quaternion.Euler(0f, (float)random.NextDouble() * 360f, 0f), Vector3.one * size);
                     if (plant != null && (path.Contains("Grass_") || path.Contains("Flower_") || path.Contains("Fern_")))
@@ -528,6 +717,139 @@ namespace LightRemembers.Editor
             }
             forest.gameObject.AddComponent<GrassWindSway>().Configure(swayingPlants.ToArray(), 3.2f, 0.9f);
             Debug.Log($"Lighthouse Journey meadow dressing: {count} imported grass, flower, fern and bush instances.");
+        }
+
+        private static void BuildGroundCover(Transform parent, GroundPatch[] land)
+        {
+            var existing = parent.Find("MeadowGroundCover");
+            if (existing != null) UnityEngine.Object.DestroyImmediate(existing.gameObject);
+
+            var sourcePaths = new[]
+            {
+                Nature + "Grass_Common_Short.fbx",
+                Nature + "Grass_Wispy_Short.fbx"
+            };
+            var meshes = new Mesh[sourcePaths.Length];
+            var materials = new Material[sourcePaths.Length];
+            for (var i = 0; i < sourcePaths.Length; i++)
+            {
+                var source = AssetDatabase.LoadAssetAtPath<GameObject>(sourcePaths[i]);
+                var filter = source != null ? source.GetComponentInChildren<MeshFilter>(true) : null;
+                var renderer = source != null ? source.GetComponentInChildren<MeshRenderer>(true) : null;
+                if (filter == null || renderer == null || filter.sharedMesh == null || renderer.sharedMaterial == null)
+                    throw new InvalidOperationException($"Meadow grass mesh/material is missing: {sourcePaths[i]}");
+                meshes[i] = filter.sharedMesh;
+                materials[i] = LoadOrCreateInstancedMeadowMaterial(renderer.sharedMaterial, i);
+            }
+
+            var patches = new MeadowGroundCover.Patch[land.Length];
+            for (var i = 0; i < land.Length; i++)
+                patches[i] = new MeadowGroundCover.Patch(land[i].Center,
+                    new Vector2(land[i].Size.x, land[i].Size.z));
+
+            var cover = new GameObject("MeadowGroundCover");
+            cover.transform.SetParent(parent, false);
+            var player = GameObject.Find("PlayerPrototype");
+            var component = cover.AddComponent<MeadowGroundCover>();
+            component.Configure(meshes, materials, patches, player != null ? player.transform : null,
+                player != null ? player.GetComponent<PlayerInputReader>() : null,
+                player != null ? player.GetComponent<CharacterController>() : null);
+            Debug.Log($"Instanced meadow ground cover configured with {component.BladeCount} short grass clumps; clear path and house approaches are preserved.");
+        }
+
+        private static Material LoadOrCreateInstancedMeadowMaterial(Material source, int index)
+        {
+            const string folder = "Assets/_Game/Art/Materials/Meadow";
+            if (!AssetDatabase.IsValidFolder(folder))
+                AssetDatabase.CreateFolder("Assets/_Game/Art/Materials", "Meadow");
+            var path = folder + $"/LR_MeadowGrass_{index}.mat";
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                material = new Material(source) { name = $"LR_MeadowGrass_{index}" };
+                AssetDatabase.CreateAsset(material, path);
+            }
+            material.enableInstancing = true;
+            EditorUtility.SetDirty(material);
+            return material;
+        }
+
+        private static Material LoadOrCreatePalmMaterial()
+        {
+            const string path = "Assets/_Game/Art/Materials/LR_MemoryLightPalm.mat";
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+                material = new Material(shader) { name = "LR_MemoryLightPalm" };
+                AssetDatabase.CreateAsset(material, path);
+            }
+            var tint = new Color(0.42f, 0.86f, 1f, 1f);
+            if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", tint);
+            else material.color = tint;
+            if (material.HasProperty("_EmissionColor"))
+            {
+                material.EnableKeyword("_EMISSION");
+                material.SetColor("_EmissionColor", tint * 1.8f);
+            }
+            EditorUtility.SetDirty(material);
+            return material;
+        }
+
+        private static void ConfigureMemoryMotes(ParticleSystem system, MemoryLightBeamVisual visual)
+        {
+            var main = system.main;
+            main.loop = true;
+            main.playOnAwake = false;
+            main.simulationSpace = ParticleSystemSimulationSpace.Local;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(1.5f, 2.7f);
+            main.startSpeed = 0f;
+            main.startSize = new ParticleSystem.MinMaxCurve(0.00045f, 0.0024f);
+            main.startColor = new Color(0.68f, 0.94f, 1f, 0.55f);
+            main.maxParticles = 240;
+
+            var emission = system.emission;
+            emission.rateOverTime = 0f;
+            var shape = system.shape;
+            shape.enabled = false;
+
+            var velocity = system.velocityOverLifetime;
+            velocity.enabled = true;
+            velocity.space = ParticleSystemSimulationSpace.Local;
+            velocity.x = new ParticleSystem.MinMaxCurve(-0.018f, 0.018f);
+            velocity.y = new ParticleSystem.MinMaxCurve(-0.014f, 0.014f);
+            velocity.z = new ParticleSystem.MinMaxCurve(-0.018f, 0.018f);
+
+            var noise = system.noise;
+            noise.enabled = true;
+            noise.strength = 0.025f;
+            noise.frequency = 0.5f;
+            noise.scrollSpeed = 0.08f;
+            noise.octaveCount = 1;
+            noise.damping = true;
+
+            var color = system.colorOverLifetime;
+            color.enabled = true;
+            var gradient = new Gradient();
+            gradient.SetKeys(
+                new[] { new GradientColorKey(new Color(0.65f, 0.9f, 1f), 0f), new GradientColorKey(new Color(0.3f, 0.65f, 1f), 1f) },
+                new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.58f, 0.2f), new GradientAlphaKey(0.5f, 0.8f), new GradientAlphaKey(0f, 1f) });
+            color.color = gradient;
+            var renderer = system.GetComponent<ParticleSystemRenderer>();
+            renderer.renderMode = ParticleSystemRenderMode.Billboard;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            system.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var drift = system.GetComponent<MemoryLightMoteDrift>() ?? system.gameObject.AddComponent<MemoryLightMoteDrift>();
+            drift.Configure(system, visual, 19f, 28f);
+        }
+
+        private static Transform FindDescendant(Transform root, string targetName)
+        {
+            foreach (var child in root.GetComponentsInChildren<Transform>(true))
+                if (child.name == targetName)
+                    return child;
+            return null;
         }
 
         private static bool IsNearHouse(float x, float z)
