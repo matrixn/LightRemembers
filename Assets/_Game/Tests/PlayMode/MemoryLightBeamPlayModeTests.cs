@@ -112,10 +112,12 @@ namespace LightRemembers.Tests.PlayMode
 
             var raisedDirection = (forearm.position - upper.position).normalized;
             Assert.That(pose.PoseWeight, Is.GreaterThan(0.9f));
-            Assert.That(Vector3.Dot(raisedDirection, Vector3.up), Is.GreaterThan(0.8f),
-                "The arm should lift toward the face/sky, not remain extended sideways.");
-            Assert.That(Vector3.Dot(raisedDirection, model.transform.forward), Is.GreaterThan(0.25f),
-                "The raised hand should stay in front of the character instead of reaching behind the head.");
+            Assert.That(Vector3.Dot(raisedDirection, player.transform.forward), Is.GreaterThan(0.85f),
+                "The raised arm should reach ahead of the player instead of pointing back toward the camera.");
+            Assert.That(Vector3.Dot(hand.up, player.transform.forward), Is.GreaterThan(0.85f),
+                "The open palm should face in the beam/aim direction.");
+            Assert.That(Vector3.Dot(hand.forward, player.transform.up), Is.GreaterThan(0.85f),
+                "The open fingers should point upward while the palm faces forward.");
             Assert.That(Vector3.Distance(origin.position, hand.position), Is.LessThan(0.01f));
 
             pose.SetLightHeld(false);

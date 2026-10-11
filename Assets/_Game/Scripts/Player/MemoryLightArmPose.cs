@@ -11,9 +11,8 @@ namespace LightRemembers.Player
         [SerializeField] private Transform forearm;
         [SerializeField] private Transform hand;
         [SerializeField] private Transform lightOrigin;
-        [SerializeField] private Transform poseFrame;
         [SerializeField, Min(0.01f)] private float blendSpeed = 7f;
-        [SerializeField] private Vector3 targetDirection = new Vector3(0.08f, 0.92f, 0.35f);
+        [SerializeField] private Vector3 armAimDirection = new Vector3(0.05f, 0.32f, 1f);
         [SerializeField] private Vector3 forearmRaise = new Vector3(0f, 0f, -12f);
 
         private float _weight;
@@ -33,8 +32,7 @@ namespace LightRemembers.Player
             inputReader = reader;
             _lightHeld = reader != null && reader.MemoryLightHeld;
             lightOrigin = origin;
-            poseFrame = modelRoot;
-            targetDirection = new Vector3(0.08f, 0.92f, 0.35f);
+            armAimDirection = new Vector3(0.05f, 0.32f, 1f);
             forearmRaise = new Vector3(0f, 0f, -12f);
             if (modelRoot != null)
             {
@@ -53,7 +51,6 @@ namespace LightRemembers.Player
                 var visual = transform.Find("PlayerCharacterVisual");
                 if (visual != null)
                 {
-                    poseFrame = visual;
                     upperArm = FindDescendant(visual, "upperarm_r");
                     forearm = FindDescendant(visual, "lowerarm_r");
                     hand = FindDescendant(visual, "hand_r");
@@ -72,15 +69,13 @@ namespace LightRemembers.Player
             _weight = Mathf.MoveTowards(_weight, target, blendSpeed * Time.deltaTime);
             var upperBase = upperArm.localRotation;
             var forearmBase = forearm.localRotation;
+            var handBase = hand != null ? hand.localRotation : Quaternion.identity;
             if (_weight > 0f && hand != null)
             {
                 var currentDirection = forearm.position - upperArm.position;
-                // Aim in the visual rig's frame: this model faces opposite the player
-                // root, so root-relative aim rotates the raised hand behind its head.
-                var frame = poseFrame != null ? poseFrame : transform;
-                var targetWorldDirection = frame.up * targetDirection.y +
-                                           frame.right * targetDirection.x +
-                                           frame.forward * targetDirection.z;
+                // The imported character mesh/armature faces opposite the gameplay root.
+                // Use the gameplay root so the hand reaches toward the player's actual aim.
+                var targetWorldDirection = transform.TransformDirection(armAimDirection).normalized;
                 if (currentDirection.sqrMagnitude > 0.0001f && targetWorldDirection.sqrMagnitude > 0.0001f)
                 {
                     var worldDelta = Quaternion.FromToRotation(currentDirection.normalized,
@@ -93,6 +88,19 @@ namespace LightRemembers.Player
                 }
             }
             forearm.localRotation = forearmBase * Quaternion.Euler(forearmRaise * _weight);
+            if (hand != null && hand.parent != null && _weight > 0f)
+            {
+                // This rig's hand local +Y is the palm normal. Keep the fingers lifted
+                // while turning the open palm toward the beam instead of back at camera.
+                var palmNormal = transform.TransformDirection(armAimDirection).normalized;
+                var fingerDirection = Vector3.ProjectOnPlane(transform.up, palmNormal).normalized;
+                if (fingerDirection.sqrMagnitude > 0.0001f && palmNormal.sqrMagnitude > 0.0001f)
+                {
+                    var desiredWorldRotation = Quaternion.LookRotation(fingerDirection, palmNormal);
+                    var desiredLocalRotation = Quaternion.Inverse(hand.parent.rotation) * desiredWorldRotation;
+                    hand.localRotation = Quaternion.Slerp(handBase, desiredLocalRotation, _weight);
+                }
+            }
             if (lightOrigin != null && hand != null)
                 lightOrigin.position = hand.position;
         }

@@ -47222,9 +47222,8 @@ MonoBehaviour:
   forearm: {fileID: 259212428}
   hand: {fileID: 1420749127}
   lightOrigin: {fileID: 1470157941}
-  poseFrame: {fileID: 718446064}
   blendSpeed: 7
-  targetDirection: {x: 0.08, y: 0.92, z: 0.35}
+  armAimDirection: {x: 0.05, y: 0.32, z: 1}
   forearmRaise: {x: 0, y: 0, z: -12}
 --- !u!1 &1471114747
 GameObject:
