@@ -54,7 +54,8 @@ namespace LightRemembers.Environment
         public float DensityPerSquareMeter => densityPerSquareMeter;
 
         public void Configure(Mesh[] sourceMeshes, Material[] sourceMaterials, Patch[] coverPatches,
-            Transform playerTransform, Player.PlayerInputReader reader, CharacterController controller)
+            Transform playerTransform, Player.PlayerInputReader reader, CharacterController controller,
+            float density = 12f)
         {
             meshes = sourceMeshes ?? Array.Empty<Mesh>();
             materials = sourceMaterials ?? Array.Empty<Material>();
@@ -62,6 +63,7 @@ namespace LightRemembers.Environment
             player = playerTransform;
             inputReader = reader;
             characterController = controller;
+            densityPerSquareMeter = Mathf.Max(0.1f, density);
             BuildInstances();
         }
 
@@ -70,6 +72,12 @@ namespace LightRemembers.Environment
             player = playerTransform;
             inputReader = reader;
             characterController = controller;
+        }
+
+        public void SetDensityAndRebuild(float density)
+        {
+            densityPerSquareMeter = Mathf.Max(0.1f, density);
+            BuildInstances();
         }
 
         private void Awake()
@@ -151,7 +159,7 @@ namespace LightRemembers.Environment
             var random = new System.Random(241011);
             _blades = new Blade[patches.Length][][];
             BladeCount = 0;
-            var areaRatio = patches.Length > 0 ? 0.61f : 0f; // Leave the paved trail and house clearings open.
+            var areaRatio = patches.Length > 0 ? 0.82f : 0f; // Leave the paved trail and house clearings open.
             for (var p = 0; p < patches.Length; p++)
             {
                 _blades[p] = new Blade[meshes.Length][];

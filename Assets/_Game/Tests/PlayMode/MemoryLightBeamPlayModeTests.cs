@@ -114,6 +114,8 @@ namespace LightRemembers.Tests.PlayMode
             Assert.That(pose.PoseWeight, Is.GreaterThan(0.9f));
             Assert.That(Vector3.Dot(raisedDirection, Vector3.up), Is.GreaterThan(0.8f),
                 "The arm should lift toward the face/sky, not remain extended sideways.");
+            Assert.That(Vector3.Dot(raisedDirection, model.transform.forward), Is.GreaterThan(0.25f),
+                "The raised hand should stay in front of the character instead of reaching behind the head.");
             Assert.That(Vector3.Distance(origin.position, hand.position), Is.LessThan(0.01f));
 
             pose.SetLightHeld(false);

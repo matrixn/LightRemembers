@@ -67,6 +67,11 @@ namespace LightRemembers.Tests.EditMode
                     "The opening pose should face along the village route, not back toward the camera.");
                 var animationController = animator.runtimeAnimatorController as AnimatorController;
                 Assert.That(animationController, Is.Not.Null);
+                var locomotionTree = animationController.layers[0].stateMachine.states
+                    .Single(state => state.state.name == "Locomotion").state.motion as BlendTree;
+                Assert.That(locomotionTree, Is.Not.Null);
+                Assert.That(locomotionTree.children[0].motion.name, Is.EqualTo("Armature|Idle_Loop"),
+                    "The character must idle standing, not use the similarly named crouch idle clip.");
                 Assert.That(animationController.parameters.Any(parameter => parameter.name == "Jump" &&
                     parameter.type == AnimatorControllerParameterType.Trigger), Is.True,
                     "A single press should request one jump animation, independent of how long Space is held.");
@@ -113,9 +118,23 @@ namespace LightRemembers.Tests.EditMode
                 var groundCover = FindInScene<MeadowGroundCover>(roots).Single();
                 Assert.That(groundCover.SourceMeshCount, Is.EqualTo(2));
                 Assert.That(groundCover.PatchCount, Is.EqualTo(7));
-                Assert.That(groundCover.DensityPerSquareMeter, Is.GreaterThan(3f));
-                Assert.That(FindInScene<MonoBehaviour>(roots)
-                    .Single(component => component.GetType().Name == "CinemachineDeoccluder").enabled, Is.True);
+                Assert.That(groundCover.DensityPerSquareMeter, Is.GreaterThanOrEqualTo(20f),
+                    "The instanced cover should read as meadow carpet rather than sparse clumps.");
+                var deoccluder = FindInScene<MonoBehaviour>(roots)
+                    .Single(component => component.GetType().Name == "CinemachineDeoccluder");
+                Assert.That(deoccluder.enabled, Is.True);
+                var deoccluderType = deoccluder.GetType();
+                var collideAgainst = (LayerMask)deoccluderType.GetField("CollideAgainst").GetValue(deoccluder);
+                Assert.That(collideAgainst.value & (1 << LayerMask.NameToLayer("Ignore Raycast")), Is.Not.Zero,
+                    "The camera must collide with the ground layer to stop orbiting below the terrain.");
+                Assert.That(deoccluderType.GetField("IgnoreTag").GetValue(deoccluder), Is.EqualTo("Player"));
+                Assert.That(player.tag, Is.EqualTo("Player"),
+                    "The camera obstacle check should ignore the player collider but retain the world.");
+
+                var soil = transformsForScene(roots).Single(transform => transform.name == "OpeningShore_GrassTop")
+                    .GetComponent<Renderer>().sharedMaterial;
+                Assert.That(soil.mainTexture, Is.Not.Null, "The meadow floor should use the terrain noise texture.");
+                Assert.That(soil.mainTexture.name, Is.EqualTo("T_Noise_Terrain"));
                 Assert.That(FindInScene<Renderer>(roots).Count(renderer => renderer.name == "Floor_UnevenBrick"),
                     Is.GreaterThan(20), "The approach should have a visibly paved route.");
 
@@ -150,5 +169,8 @@ namespace LightRemembers.Tests.EditMode
 
         private static T[] FindInScene<T>(IEnumerable<GameObject> roots) where T : Component =>
             roots.SelectMany(root => root.GetComponentsInChildren<T>(true)).ToArray();
+
+        private static Transform[] transformsForScene(IEnumerable<GameObject> roots) =>
+            roots.SelectMany(root => root.GetComponentsInChildren<Transform>(true)).ToArray();
     }
 }

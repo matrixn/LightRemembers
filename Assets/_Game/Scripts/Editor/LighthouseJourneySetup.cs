@@ -53,6 +53,15 @@ namespace LightRemembers.Editor
                 new Color(0.018f, 0.012f, 0.006f));
             SetShowcaseMaterial(grass, new Color(0.3f, 0.43f, 0.2f), new Color(0.045f, 0.065f, 0.018f));
             SetShowcaseMaterial(earth, new Color(0.39f, 0.27f, 0.15f), new Color(0.02f, 0.012f, 0.006f));
+            var soilNoise = AssetDatabase.LoadAssetAtPath<Texture2D>(
+                "Assets/ThirdParty/Quaternius/MedievalVillageMegaKit/Textures/T_Noise_Terrain.png");
+            if (soilNoise != null)
+            {
+                if (earth.HasProperty("_BaseMap")) earth.SetTexture("_BaseMap", soilNoise);
+                else earth.mainTexture = soilNoise;
+                earth.mainTextureScale = new Vector2(14f, 14f);
+                EditorUtility.SetDirty(earth);
+            }
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             EditorSceneManager.SetActiveScene(scene);
@@ -88,11 +97,13 @@ namespace LightRemembers.Editor
             var deoccluder = camera.transform.parent.Find("ThirdPersonCamera").GetComponent<CinemachineDeoccluder>();
             deoccluder.enabled = true;
             deoccluder.AvoidObstacles.Enabled = true;
-            deoccluder.AvoidObstacles.CameraRadius = 0.22f;
-            deoccluder.AvoidObstacles.Damping = 0.2f;
-            deoccluder.AvoidObstacles.DampingWhenOccluded = 0.08f;
-            var groundLayer = LayerMask.NameToLayer("Ignore Raycast");
-            deoccluder.CollideAgainst = groundLayer >= 0 ? ~(1 << groundLayer) : ~0;
+            deoccluder.AvoidObstacles.CameraRadius = 0.34f;
+            deoccluder.AvoidObstacles.Damping = 0.12f;
+            deoccluder.AvoidObstacles.DampingWhenOccluded = 0.04f;
+            deoccluder.CollideAgainst = ~0;
+            deoccluder.TransparentLayers = 0;
+            deoccluder.IgnoreTag = "Player";
+            player.tag = "Player";
             movement.Configure(player.GetComponent<CharacterController>(), reader, camera.transform);
             ConfigurePlayerCharacter(player, reader);
             BindMeadowToPlayer(player);
@@ -259,6 +270,60 @@ namespace LightRemembers.Editor
             AssetDatabase.SaveAssets();
         }
 
+        [MenuItem("Light Remembers/Showcase/Refresh Lighthouse Presentation Polish")]
+        public static void RefreshPresentationPolish()
+        {
+            var scene = SceneManager.GetSceneByPath(ScenePath);
+            if (!scene.IsValid() || !scene.isLoaded)
+                throw new InvalidOperationException($"Open {ScenePath} before refreshing its presentation settings.");
+
+            var roots = scene.GetRootGameObjects();
+            var player = FindInRoots(roots, "PlayerPrototype");
+            var camera = FindInRoots(roots, "ThirdPersonCamera");
+            var ground = FindInRoots(roots, "IslandGround");
+            var cover = FindInRoots(roots, "MeadowGroundCover")?.GetComponent<MeadowGroundCover>();
+            if (player == null || camera == null || ground == null || cover == null)
+                throw new InvalidOperationException("LighthouseJourney is missing its player, camera, ground, or meadow cover.");
+
+            player.tag = "Player";
+            var deoccluder = camera.GetComponent<CinemachineDeoccluder>();
+            deoccluder.enabled = true;
+            deoccluder.CollideAgainst = ~0;
+            deoccluder.TransparentLayers = 0;
+            deoccluder.IgnoreTag = "Player";
+            var avoidance = deoccluder.AvoidObstacles;
+            avoidance.Enabled = true;
+            avoidance.CameraRadius = 0.34f;
+            avoidance.Damping = 0.12f;
+            avoidance.DampingWhenOccluded = 0.04f;
+            deoccluder.AvoidObstacles = avoidance;
+
+            var reader = player.GetComponent<PlayerInputReader>();
+            var origin = player.transform.Find("MemoryLightOrigin");
+            var model = player.transform.Find("PlayerCharacterVisual");
+            player.GetComponent<MemoryLightArmPose>()?.Configure(reader, model, origin);
+            cover.SetDensityAndRebuild(22f);
+
+            var earth = AssetDatabase.LoadAssetAtPath<Material>("Assets/_Game/Art/Materials/LR_Showcase_Earth.mat");
+            var soilNoise = AssetDatabase.LoadAssetAtPath<Texture2D>(
+                "Assets/ThirdParty/Quaternius/MedievalVillageMegaKit/Textures/T_Noise_Terrain.png");
+            if (earth != null && soilNoise != null)
+            {
+                if (earth.HasProperty("_BaseMap")) earth.SetTexture("_BaseMap", soilNoise);
+                else earth.mainTexture = soilNoise;
+                earth.mainTextureScale = new Vector2(14f, 14f);
+                foreach (var renderer in ground.GetComponentsInChildren<Renderer>(true))
+                    if (renderer.name.EndsWith("_GrassTop", StringComparison.Ordinal))
+                        renderer.sharedMaterial = earth;
+                EditorUtility.SetDirty(earth);
+            }
+
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, ScenePath);
+            AssetDatabase.SaveAssets();
+            Debug.Log("Lighthouse Journey presentation settings refreshed without rebuilding the scene.");
+        }
+
         private static void PrepareMemoryLightHand(GameObject player, PlayerInputReader reader, Transform origin)
         {
             if (player == null || origin == null) return;
@@ -409,9 +474,10 @@ namespace LightRemembers.Editor
             var importedClips = AssetDatabase.LoadAllAssetsAtPath(AnimationPath);
             AnimationClip FindClip(string suffix)
             {
+                var fullClipName = "|" + suffix;
                 foreach (var asset in importedClips)
                     if (asset is AnimationClip clip && !clip.name.StartsWith("__preview__", StringComparison.Ordinal) &&
-                        clip.name.EndsWith(suffix, StringComparison.Ordinal)) return clip;
+                        clip.name.EndsWith(fullClipName, StringComparison.Ordinal)) return clip;
                 return null;
             }
             var idle = FindClip("Idle_Loop");
@@ -628,7 +694,7 @@ namespace LightRemembers.Editor
                 Block(patch.Name, ground, patch.Center, patch.Size, neutral);
                 var turf = Block(patch.Name + "_GrassTop", ground,
                     new Vector3(patch.Center.x, 0.012f, patch.Center.z),
-                    new Vector3(patch.Size.x - 0.08f, 0.025f, patch.Size.z - 0.08f), grass);
+                    new Vector3(patch.Size.x - 0.08f, 0.025f, patch.Size.z - 0.08f), earth);
                 UnityEngine.Object.DestroyImmediate(turf.GetComponent<Collider>());
                 CreatePavedTrail(ground, patch);
             }
@@ -753,7 +819,7 @@ namespace LightRemembers.Editor
             var component = cover.AddComponent<MeadowGroundCover>();
             component.Configure(meshes, materials, patches, player != null ? player.transform : null,
                 player != null ? player.GetComponent<PlayerInputReader>() : null,
-                player != null ? player.GetComponent<CharacterController>() : null);
+                player != null ? player.GetComponent<CharacterController>() : null, 22f);
             Debug.Log($"Instanced meadow ground cover configured with {component.BladeCount} short grass clumps; clear path and house approaches are preserved.");
         }
 
@@ -1765,6 +1831,15 @@ namespace LightRemembers.Editor
             if (parent != null)
                 group.SetParent(parent, false);
             return group;
+        }
+
+        private static GameObject FindInRoots(GameObject[] roots, string name)
+        {
+            foreach (var root in roots)
+            foreach (var child in root.GetComponentsInChildren<Transform>(true))
+                if (child.name == name)
+                    return child.gameObject;
+            return null;
         }
 
         private static TextMesh WorldLabel(string name, Transform parent, string value, float characterSize)
