@@ -133,6 +133,8 @@ coverage/
 # ------------------------------------------------------------
 
 Screenshots/
+# Keep the curated captures embedded by the project README.
+!Assets/_Game/Documentation/Screenshots/
 Captures/
 TempExports/
 
